@@ -1,0 +1,9 @@
+.venv/
+**/.pio/
+**/node_modules/
+server/.env
+server/.env.production
+server/data.db
+server/.data.db.tmp
+server/public/_script_tmp.js
+firmware/sdkconfig.pir_test

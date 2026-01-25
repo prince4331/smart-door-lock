@@ -1,0 +1,1154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart Lock Dashboard</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap');
+    :root {
+      --bg: #0b0f14;
+      --panel: #121821;
+      --card: #151e28;
+      --accent: #7bd3c9;
+      --accent-2: #e7c078;
+      --text: #ecf2f6;
+      --muted: #9ca6b0;
+      --danger: #ef4444;
+      --success: #22c55e;
+      --warn: #f59e0b;
+      --info: #38bdf8;
+      --outline: rgba(255,255,255,0.12);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Space Grotesk", "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at 15% 10%, rgba(123, 211, 201, 0.18), transparent 40%),
+        radial-gradient(circle at 85% 20%, rgba(231, 192, 120, 0.18), transparent 45%),
+        linear-gradient(140deg, rgba(14, 20, 27, 0.9), rgba(8, 12, 16, 0.95)),
+        var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      letter-spacing: 0.2px;
+    }
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(transparent 96%, rgba(255,255,255,0.02) 97%),
+        linear-gradient(90deg, transparent 96%, rgba(255,255,255,0.02) 97%);
+      background-size: 60px 60px;
+      pointer-events: none;
+      opacity: 0.2;
+      z-index: 0;
+    }
+
+    .status-bar {
+      background: rgba(12, 18, 24, 0.75);
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      padding: 10px 18px;
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      flex-wrap: wrap;
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      backdrop-filter: blur(14px);
+    }
+    .status-bar .item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      font-size: 12px;
+    }
+    .status-bar .label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px; }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+    .status-dot.online { background: var(--success); box-shadow: 0 0 8px var(--success); }
+    .status-dot.offline { background: var(--muted); }
+
+    .door-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 10px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 999px;
+      font-size: 12px;
+    }
+    .door-icon {
+      width: 18px;
+      height: 18px;
+      border: 2px solid var(--muted);
+      border-radius: 3px;
+      position: relative;
+      transition: all 150ms ease;
+    }
+    .door-icon::after {
+      content: '';
+      position: absolute;
+      width: 3px;
+      height: 3px;
+      background: var(--muted);
+      border-radius: 50%;
+      right: 3px;
+      top: 7px;
+      transition: all 150ms ease;
+    }
+    .door-icon.closed { border-color: var(--success); box-shadow: 0 0 8px rgba(34,197,94,0.35); }
+    .door-icon.closed::after { background: var(--success); }
+    .door-icon.open { border-color: var(--warn); box-shadow: 0 0 8px rgba(245,158,11,0.35); transform: rotate(-10deg); }
+    .door-icon.open::after { background: var(--warn); right: 1px; }
+
+    .status-pill {
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      border: 1px solid rgba(255,255,255,0.14);
+      box-shadow: inset 0 0 0 1px rgba(0,0,0,0.25);
+    }
+    .status-pill.ok { color: var(--success); background: rgba(34,197,94,0.16); }
+    .status-pill.warn { color: var(--warn); background: rgba(245,158,11,0.18); }
+    .status-pill.danger { color: var(--danger); background: rgba(239,68,68,0.18); }
+
+    .shell { max-width: 1400px; margin: 0 auto; padding: 22px 20px 28px; position: relative; z-index: 1; }
+    header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    h1 { font-size: 28px; letter-spacing: 0.6px; font-weight: 600; }
+    .badge {
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      background: rgba(255,255,255,0.08);
+      color: var(--muted);
+      border: 1px solid rgba(255,255,255,0.14);
+      font-weight: 600;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(300px, 340px) minmax(360px, 1fr) minmax(420px, 520px);
+      gap: 18px;
+      align-items: start;
+      margin-bottom: 24px;
+    }
+    .stack { display: grid; gap: 18px; align-content: start; }
+
+    .card {
+      background: var(--card);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 16px;
+      padding: 18px;
+      box-shadow: 0 18px 40px rgba(0,0,0,0.35);
+      position: relative;
+      min-height: 0;
+    }
+    .card::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: 16px;
+      border: 1px solid var(--outline);
+      pointer-events: none;
+      opacity: 0.2;
+    }
+    .card h2 { margin: 0 0 12px; font-size: 12px; color: var(--muted); font-weight: 600; letter-spacing: 0.6px; text-transform: uppercase; }
+
+    .cmd-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+    .cmd-grid button:first-child { grid-column: span 2; }
+
+    button {
+      padding: 12px 16px;
+      border: 1px solid rgba(255,255,255,0.16);
+      border-radius: 12px;
+      background: linear-gradient(140deg, rgba(231, 192, 120, 0.95), rgba(231, 192, 120, 0.6));
+      color: #2b1f10;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 180ms ease;
+      font-size: 12px;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 10px 20px rgba(0,0,0,0.25);
+      letter-spacing: 0.4px;
+    }
+    button:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 14px 28px rgba(0,0,0,0.35); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    button.btn-danger { background: linear-gradient(135deg, rgba(239, 68, 68, 0.95), rgba(185, 28, 28, 0.9)); color: #fff; }
+    button.btn-warn { background: linear-gradient(135deg, rgba(245, 158, 11, 0.95), rgba(217, 119, 6, 0.9)); color: #1f1405; }
+    button.btn-secondary { background: rgba(16, 22, 30, 0.92); color: var(--text); border: 1px solid rgba(255,255,255,0.2); }
+
+    .cmd-progress { margin-top: 12px; padding: 12px; background: rgba(0,0,0,0.3); border-radius: 10px; font-size: 12px; display: none; border: 1px solid rgba(255,255,255,0.08); }
+    .cmd-progress.active { display: block; }
+    .cmd-progress .id { color: var(--accent-2); font-family: monospace; }
+    .cmd-progress .timer { color: var(--warn); float: right; }
+
+    .health-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .health-metric { padding: 10px; background: rgba(10, 14, 18, 0.5); border-radius: 12px; border: 1px solid rgba(255,255,255,0.06); }
+    .health-metric .label { color: var(--muted); font-size: 10px; text-transform: uppercase; margin-bottom: 4px; letter-spacing: 0.6px; }
+    .health-metric .value { font-size: 16px; font-weight: 700; }
+
+    .camera-frame { background: rgba(8, 10, 14, 0.55); border-radius: 14px; padding: 8px; }
+    .camera-frame img { width: 100%; height: auto; border-radius: 10px; display: block; object-fit: cover; aspect-ratio: 16 / 9; }
+    .camera-meta { margin-top: 8px; font-size: 12px; color: var(--muted); display: flex; gap: 6px; align-items: center; }
+
+    .event-feed { max-height: 260px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+    .event-item { padding: 10px; background: rgba(10, 14, 18, 0.5); border-left: 3px solid var(--accent); border-radius: 10px; font-size: 12px; line-height: 1.5; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04); }
+    .event-item .event-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 700; margin-right: 8px; text-transform: uppercase; }
+    .event-badge.intrusion { background: var(--danger); color: #fff; }
+    .event-badge.fire { background: #ff6b35; color: #fff; }
+    .event-badge.door { background: var(--info); color: #fff; }
+    .event-badge.command { background: var(--accent-2); color: #0b1021; }
+    .event-badge.system { background: var(--muted); color: #fff; }
+    .event-time { color: var(--muted); font-size: 10px; }
+
+    .table-controls { display: grid; gap: 8px; margin-bottom: 10px; }
+    .control-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .control-row.wide { grid-template-columns: 1fr 1fr auto; }
+    .table-controls input, .table-controls select { padding: 8px 10px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.16); border-radius: 8px; color: var(--text); font-size: 12px; min-width: 0; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    thead { background: rgba(9, 12, 16, 0.55); border-bottom: 1px solid rgba(255,255,255,0.1); }
+    th { padding: 8px; text-align: left; font-weight: 600; color: var(--muted); text-transform: uppercase; font-size: 10px; letter-spacing: 0.5px; }
+    td { padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+    tbody tr:hover { background: rgba(255,255,255,0.03); }
+    .table-wrapper { max-height: 320px; overflow: auto; }
+
+    .chart-container { position: relative; height: 200px; background: rgba(8, 10, 14, 0.45); border-radius: 12px; padding: 10px; margin-bottom: 12px; }
+    .chart-canvas { width: 100%; height: 100%; display: block; }
+    .chart-title { font-size: 11px; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px; }
+    .analytics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+
+    @media (max-width: 1200px) {
+      .layout { grid-template-columns: minmax(300px, 360px) minmax(360px, 1fr); }
+    }
+    @media (max-width: 768px) {
+      .layout { grid-template-columns: 1fr; }
+      .status-bar { font-size: 12px; gap: 12px; }
+      .cmd-grid { grid-template-columns: 1fr; }
+      .cmd-grid button:first-child { grid-column: span 1; }
+      .health-grid { grid-template-columns: 1fr; }
+      h1 { font-size: 22px; }
+    }
+
+  
+    /* Login Overlay */
+    .login-overlay {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(circle at 20% 20%, rgba(123, 211, 201, 0.12), transparent 35%),
+                  radial-gradient(circle at 80% 20%, rgba(231, 192, 120, 0.14), transparent 40%),
+                  rgba(6, 10, 14, 0.85);
+      z-index: 2000;
+      backdrop-filter: blur(16px);
+    }
+    .login-overlay.show { display: flex; }
+    .login-box {
+      background: rgba(18, 24, 32, 0.92);
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 16px;
+      padding: 28px;
+      width: min(420px, 92vw);
+      box-shadow: 0 24px 60px rgba(0,0,0,0.5);
+    }
+    .login-box h2 {
+      margin: 0 0 8px;
+      font-size: 22px;
+    }
+    .login-box p {
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 16px;
+    }
+    .login-box input {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.16);
+      background: rgba(0,0,0,0.25);
+      color: var(--text);
+      margin-bottom: 12px;
+      font-family: monospace;
+    }
+    .login-box button { width: 100%; }
+    .login-box .skip {
+      margin-top: 10px;
+      text-align: center;
+      font-size: 12px;
+    }
+    .login-box .skip a {
+      color: var(--accent-2);
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .login-box .skip a:hover { text-decoration: underline; }
+
+  </style>
+</head>
+<body>
+  <!-- Login Overlay -->
+  <div id="loginOverlay" class="login-overlay show">
+    <div class="login-box">
+      <h2>Access Required</h2>
+      <p>Enter your access token to control the smart lock</p>
+      <input type="password" id="tokenInput" placeholder="Access token..." />
+      <button onclick="submitToken()">Unlock Dashboard</button>
+      <div class="skip">
+        <a onclick="skipLogin()">Continue without token (view only)</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Status Bar -->
+  <div class="status-bar">
+    <div class="item">
+      <span class="status-dot" id="serverDot"></span>
+      <span class="label">Server MQTT</span>
+      <span id="serverStatus">Connecting...</span>
+    </div>
+    <div class="item">
+      <span class="status-dot" id="deviceDot"></span>
+      <span class="label">Device</span>
+      <span id="deviceStatus">Unknown</span>
+    </div>
+    <div class="item">
+      <span class="label">Last Seen</span>
+      <span id="lastSeen">-</span>
+    </div>
+    <div class="item">
+      <div class="door-status">
+        <div id="doorIcon" class="door-icon"></div>
+        <span id="doorStatusText">Door: Unknown</span>
+      </div>
+    </div>
+    <div class="item">
+      <span class="label">Lock</span>
+      <span id="lockStatusText" class="status-pill warn">Unknown</span>
+    </div>
+    <div class="item">
+      <span class="label">Alarm</span>
+      <span id="alarmStatusText" class="status-pill ok">Normal</span>
+    </div>
+    <div class="item">
+      <span class="label">PIR</span>
+      <span id="pirStatusText" class="status-pill ok">Clear</span>
+    </div>
+    <div class="item">
+      <span class="label">Fire</span>
+      <span id="fireStatusText" class="status-pill ok">OK</span>
+    </div>
+  </div>
+
+  <div class="shell">
+    <header>
+      <h1>Smart Lock Dashboard</h1>
+      <div style="display: flex; gap: 12px; align-items: center;">
+        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 12px; color: var(--muted);">
+          <input type="checkbox" id="viewerMode" onchange="toggleViewerMode()" />
+          Viewer Mode
+        </label>
+        <span id="conn" class="badge">Connecting...</span>
+      </div>
+    </header>
+
+    <div class="layout">
+      <div class="stack">
+        <div class="card">
+          <h2>Command Center</h2>
+          <div class="cmd-grid">
+            <button id="btnLock" onclick="sendCommand('LOCK')">LOCK</button>
+            <button id="btnUnlock" class="btn-danger" onclick="sendCommand('UNLOCK')">UNLOCK</button>
+            <button id="btnSilence" class="btn-warn" onclick="sendCommand('SILENCE')">SILENCE</button>
+            <button id="btnArm" class="btn-secondary" onclick="sendCommand('ARM')">ARM</button>
+          </div>
+          <div id="cmdProgress" class="cmd-progress">
+            <div><span class="id" id="cmdId">-</span> <span class="timer" id="cmdTimer">10s</span></div>
+            <div style="margin-top: 4px; color: var(--muted);" id="cmdMsg">Waiting for response...</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Security Mode</h2>
+          <div style="margin-bottom: 10px;">
+            <div style="display: inline-block; padding: 6px 12px; background: rgba(123, 211, 201, 0.12); border: 1px solid rgba(123, 211, 201, 0.35); border-radius: 8px;">
+              Current: <strong id="currentMode">HOME</strong>
+            </div>
+          </div>
+          <div class="cmd-grid">
+            <button onclick="sendCommand('MODE_HOME')" class="btn-secondary">HOME</button>
+            <button onclick="sendCommand('MODE_AWAY')" class="btn-secondary">AWAY</button>
+            <button onclick="sendCommand('MODE_NIGHT')" class="btn-secondary">NIGHT</button>
+          </div>
+          <div style="margin-top: 10px;">
+            <input type="password" id="pinInput" placeholder="New PIN (4-10 digits)" style="width: 100%; padding: 10px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.16); border-radius: 8px; color: var(--text); font-family: monospace;" />
+            <div style="display: flex; gap: 8px; margin-top: 8px;">
+              <button class="btn-secondary" onclick="updatePin()">Update PIN</button>
+            </div>
+            <div id="pinMsg" style="margin-top: 6px; font-size: 12px; color: var(--muted);"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Device Health</h2>
+          <div class="health-grid">
+            <div class="health-metric">
+              <div class="label">Signal (RSSI)</div>
+              <div class="value" id="rssi">N/A</div>
+            </div>
+            <div class="health-metric">
+              <div class="label">Uptime</div>
+              <div class="value" id="uptime">N/A</div>
+            </div>
+            <div class="health-metric">
+              <div class="label">Heap Free</div>
+              <div class="value" id="heap">N/A</div>
+            </div>
+            <div class="health-metric">
+              <div class="label">Reconnects</div>
+              <div class="value" id="reconnects">N/A</div>
+            </div>
+          </div>
+          <div style="margin-top: 10px; padding: 8px 10px; background: rgba(0,0,0,0.2); border-radius: 8px; font-size: 12px;">
+            <strong>Firmware:</strong> <span id="fwVersion">N/A</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="stack">
+        <div class="card">
+          <h2>Camera</h2>
+          <div class="camera-frame">
+            <img id="camStream" src="" alt="Latest camera snapshot" />
+          </div>
+          <div class="camera-meta">
+            <span class="label">Last Update:</span>
+            <span id="camStatus">None</span>
+          </div>
+          <div style="margin-top: 8px;">
+            <button class="btn-secondary" onclick="refreshCamera()">Refresh</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Live Event Feed</h2>
+          <div id="eventFeed" class="event-feed"></div>
+        </div>
+      </div>
+
+      <div class="stack">
+        <div class="card">
+          <h2>Event History</h2>
+          <div class="table-controls">
+            <div class="control-row">
+              <input type="text" id="searchBox" placeholder="Search events..." />
+              <select id="filterType">
+                <option value="">All Types</option>
+                <option value="intrusion">Intrusion</option>
+                <option value="fire">Fire</option>
+                <option value="door">Door</option>
+                <option value="command">Command</option>
+                <option value="system">System</option>
+              </select>
+            </div>
+            <div class="control-row wide">
+              <input type="date" id="filterDateFrom" />
+              <input type="date" id="filterDateTo" />
+              <button class="btn-secondary" onclick="applyFilters()">Apply Filters</button>
+            </div>
+          </div>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Time</th>
+                  <th>Type</th>
+                  <th>Event</th>
+                  <th>Details</th>
+                </tr>
+              </thead>
+              <tbody id="historyTable">
+                <tr><td colspan="4" style="text-align: center; color: var(--muted);">No events yet</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Analytics</h2>
+          <div class="analytics-grid">
+            <div>
+              <div class="chart-title">Alarms per Hour (Last 24h)</div>
+              <div class="chart-container">
+                <canvas id="chartAlarmsHourly" class="chart-canvas"></canvas>
+              </div>
+            </div>
+            <div>
+              <div class="chart-title">Unlock Attempts per Day (Last 7d)</div>
+              <div class="chart-container">
+                <canvas id="chartUnlocksDaily" class="chart-canvas"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+  <script>
+    let API_KEY = null;
+    let ACCESS_TOKEN = null;
+    let VIEWER_MODE = false;
+    let pendingCommand = null;
+    let commandTimer = null;
+    let eventHistory = [];
+    let suppressUiUpdates = false;
+    
+    const elements = {
+      loginOverlay: document.getElementById('loginOverlay'),
+      tokenInput: document.getElementById('tokenInput'),
+      viewerMode: document.getElementById('viewerMode'),
+      serverDot: document.getElementById('serverDot'),
+      serverStatus: document.getElementById('serverStatus'),
+      deviceDot: document.getElementById('deviceDot'),
+      deviceStatus: document.getElementById('deviceStatus'),
+      lastSeen: document.getElementById('lastSeen'),
+      doorIcon: document.getElementById('doorIcon'),
+      doorStatusText: document.getElementById('doorStatusText'),
+      conn: document.getElementById('conn'),
+      rssi: document.getElementById('rssi'),
+      uptime: document.getElementById('uptime'),
+      heap: document.getElementById('heap'),
+      reconnects: document.getElementById('reconnects'),
+      fwVersion: document.getElementById('fwVersion'),
+      eventFeed: document.getElementById('eventFeed'),
+      cmdProgress: document.getElementById('cmdProgress'),
+      cmdId: document.getElementById('cmdId'),
+      cmdTimer: document.getElementById('cmdTimer'),
+      cmdMsg: document.getElementById('cmdMsg'),
+      historyTable: document.getElementById('historyTable'),
+      searchBox: document.getElementById('searchBox'),
+      filterType: document.getElementById('filterType'),
+      filterDateFrom: document.getElementById('filterDateFrom'),
+      filterDateTo: document.getElementById('filterDateTo'),
+      lockStatusText: document.getElementById('lockStatusText'),
+      alarmStatusText: document.getElementById('alarmStatusText'),
+      pirStatusText: document.getElementById('pirStatusText'),
+      fireStatusText: document.getElementById('fireStatusText'),
+      camStream: document.getElementById('camStream'),
+      camStatus: document.getElementById('camStatus'),
+      pinInput: document.getElementById('pinInput'),
+      pinMsg: document.getElementById('pinMsg')
+    };
+
+    // Load stored token
+    function loadStoredToken() {
+      const stored = sessionStorage.getItem('dashAccessToken');
+      if (stored) {
+        ACCESS_TOKEN = stored;
+        elements.loginOverlay.classList.remove('show');
+        initializeDashboard();
+      }
+    }
+
+    function submitToken() {
+      const token = elements.tokenInput.value.trim();
+      if (!token) {
+        alert('Please enter an access token');
+        return;
+      }
+      ACCESS_TOKEN = token;
+      sessionStorage.setItem('dashAccessToken', token);
+      elements.loginOverlay.classList.remove('show');
+      initializeDashboard();
+    }
+
+    function skipLogin() {
+      VIEWER_MODE = true;
+      elements.viewerMode.checked = true;
+      ACCESS_TOKEN = null;
+      sessionStorage.removeItem('dashAccessToken');
+      elements.loginOverlay.classList.remove('show');
+      disableControlButtons();
+      initializeDashboard();
+    }
+
+    function toggleViewerMode() {
+      VIEWER_MODE = elements.viewerMode.checked;
+      if (VIEWER_MODE) {
+        ACCESS_TOKEN = null;
+        sessionStorage.removeItem('dashAccessToken');
+        disableControlButtons();
+      } else {
+        if (!ACCESS_TOKEN) {
+          elements.viewerMode.checked = true;
+          VIEWER_MODE = true;
+        } else {
+          enableControlButtons();
+        }
+      }
+    }
+
+    function disableControlButtons() {
+      ['btnLock', 'btnUnlock', 'btnSilence', 'btnArm'].forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) btn.disabled = true;
+      });
+    }
+
+    function enableControlButtons() {
+      ['btnLock', 'btnUnlock', 'btnSilence', 'btnArm'].forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) btn.disabled = false;
+      });
+    }
+
+    function initializeDashboard() {
+      fetch('/api/health').then(r => r.json()).then(data => {
+        if (data.status === 'ok') {
+          loadHistory();
+          loadInitial();
+          loadCameraStatus();
+          setInterval(loadCameraStatus, 2000);
+          connectSSE();
+        }
+      }).catch(() => {
+        elements.conn.textContent = 'Server offline';
+      });
+    }
+
+    // Initialize
+
+    async function loadInitial() {
+      try {
+        const res = await fetch('/api/state');
+        if (!res.ok) return;
+        const data = await res.json();
+        updateState(data);
+      } catch (e) {
+        console.warn('Initial load failed', e);
+      }
+    }
+
+    let camLastUpdate = 0;
+
+    function updateCamera(ts) {
+      if (!ts) return;
+      camLastUpdate = ts;
+      elements.camStatus.textContent = new Date(ts).toLocaleTimeString();
+      if (elements.camStream) {
+        elements.camStream.src = `/cam/latest.jpg?ts=${ts}`;
+      }
+    }
+
+    async function loadCameraStatus() {
+      try {
+        const res = await fetch('/api/cam/status');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.last_update) {
+          updateCamera(data.last_update);
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    function refreshCamera() {
+      updateCamera(Date.now());
+    }
+
+    async function loadHistory() {
+      try {
+        const res = await fetch('/api/events?limit=200');
+        if (!res.ok) return;
+        const events = await res.json();
+        elements.eventFeed.innerHTML = '';
+        eventHistory = [];
+        chartData.alarmsHourly.clear();
+        chartData.unlocksDaily.clear();
+        suppressUiUpdates = true;
+        events.slice().reverse().forEach((evt) => {
+          const payload = evt.payload || {};
+          const topic = evt.topic || '';
+          const ts = evt.ts || Date.now();
+          if (topic === 'smartlock/alert') {
+            const type = payload.type || 'system';
+            const msg = payload.message || payload.detail || 'Alert';
+            const detail = payload.detail || payload.source_type || '';
+            addEvent(type, msg, detail, ts);
+            aggregateChartData('alert', type);
+          } else if (topic === 'smartlock/command_ack') {
+            const cmd = payload.command || 'COMMAND';
+            const detail = payload.status ? `Status: ${payload.status}` : '';
+            addEvent('command', `Command ${cmd} ack`, detail, ts);
+            if (cmd === 'UNLOCK') {
+              aggregateChartData('command', 'command', true);
+            }
+          }
+        });
+        suppressUiUpdates = false;
+        updateHistoryTable();
+        updateCharts();
+      } catch (e) {
+        suppressUiUpdates = false;
+      }
+    }
+
+    function updateState(data) {
+      if (!data) return;
+      
+      // Update security mode display
+      if (data.security_mode) {
+        const modeEl = document.getElementById('currentMode');
+        if (modeEl) {
+          modeEl.textContent = data.security_mode;
+        }
+      }
+      
+      // Update device status
+      const lastSeenTs = data.last_seen || data.ts;
+      if (lastSeenTs) {
+        const date = new Date(lastSeenTs);
+        elements.lastSeen.textContent = date.toLocaleTimeString();
+        const ageMs = Date.now() - date.getTime();
+        const isOnline = ageMs < 30000; // 30s threshold
+        elements.deviceDot.className = `status-dot ${isOnline ? 'online' : 'offline'}`;
+        elements.deviceStatus.textContent = isOnline ? 'Online' : 'Offline';
+      }
+
+      const isDoorOpen = data.sensors && data.sensors.reed === true;
+      if (data.sensors && data.sensors.reed !== undefined) {
+        elements.doorIcon.classList.toggle('open', isDoorOpen);
+        elements.doorIcon.classList.toggle('closed', !isDoorOpen);
+        elements.doorStatusText.textContent = `Door: ${isDoorOpen ? 'Open' : 'Closed'}`;
+      }
+
+      const lockState = data.lock_state || (data.locked === true ? 'LOCKED' : data.locked === false ? 'UNLOCKED' : null);
+      if (lockState) {
+        const isLocked = String(lockState).toUpperCase() === 'LOCKED';
+        elements.lockStatusText.textContent = isLocked ? 'Locked' : 'Unlocked';
+        elements.lockStatusText.className = `status-pill ${isLocked ? 'ok' : 'warn'}`;
+      }
+
+      const alarmActive = data.alarm === true;
+      const alarmSilenced = data.alarm_silenced === true;
+      if (alarmSilenced) {
+        elements.alarmStatusText.textContent = 'Silenced';
+        elements.alarmStatusText.className = 'status-pill warn';
+      } else if (alarmActive) {
+        elements.alarmStatusText.textContent = 'Active';
+        elements.alarmStatusText.className = 'status-pill danger';
+      } else {
+        elements.alarmStatusText.textContent = 'Normal';
+        elements.alarmStatusText.className = 'status-pill ok';
+      }
+
+      if (data.sensors && data.sensors.pir !== undefined) {
+        const motion = data.sensors.pir === true;
+        elements.pirStatusText.textContent = motion ? 'Motion' : 'Clear';
+        elements.pirStatusText.className = `status-pill ${motion ? 'warn' : 'ok'}`;
+      }
+
+      if (data.sensors && data.sensors.fire !== undefined) {
+        const fire = data.sensors.fire === true;
+        elements.fireStatusText.textContent = fire ? 'Fire' : 'OK';
+        elements.fireStatusText.className = `status-pill ${fire ? 'danger' : 'ok'}`;
+      }
+    }
+
+    function updateMetrics(metrics) {
+      if (!metrics) return;
+      elements.rssi.textContent = metrics.rssi ? `${metrics.rssi} dBm` : 'N/A';
+      elements.uptime.textContent = metrics.uptime_s ? formatUptime(metrics.uptime_s) : 'N/A';
+      elements.heap.textContent = metrics.heap_free ? formatBytes(metrics.heap_free) : 'N/A';
+      elements.reconnects.textContent = metrics.reconnects !== undefined ? metrics.reconnects : 'N/A';
+      elements.fwVersion.textContent = metrics.fw_version || 'N/A';
+    }
+
+    function formatUptime(seconds) {
+      const days = Math.floor(seconds / 86400);
+      const hours = Math.floor((seconds % 86400) / 3600);
+      const mins = Math.floor((seconds % 3600) / 60);
+      if (days > 0) return `${days}d ${hours}h`;
+      if (hours > 0) return `${hours}h ${mins}m`;
+      return `${mins}m`;
+    }
+
+    function formatBytes(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+      return (bytes / 1048576).toFixed(1) + ' MB';
+    }
+
+    function addEvent(type, message, details = '', ts = Date.now()) {
+      const eventTime = new Date(ts);
+      const item = document.createElement('div');
+      item.className = 'event-item';
+      const badgeClass = ['intrusion', 'fire', 'door', 'command', 'system'].includes(type) ? type : 'system';
+      item.innerHTML = `
+        <span class="event-badge ${badgeClass}">${type}</span>
+        ${message}
+        ${details ? `<div style="margin-top: 4px; color: var(--muted);">${details}</div>` : ''}
+        <div class="event-time">${eventTime.toLocaleTimeString()}</div>
+      `;
+      elements.eventFeed.insertBefore(item, elements.eventFeed.firstChild);
+      
+      // Keep only last 50 events
+      while (elements.eventFeed.children.length > 50) {
+        elements.eventFeed.removeChild(elements.eventFeed.lastChild);
+      }
+      
+      // Add to history
+      eventHistory.unshift({
+        time: eventTime,
+        type: badgeClass,
+        event: message,
+        details: details
+      });
+      if (!suppressUiUpdates) {
+        updateHistoryTable();
+      }
+      
+      // Update charts on relevant events
+      if (!suppressUiUpdates && (badgeClass === 'intrusion' || badgeClass === 'fire' || badgeClass === 'door')) {
+        updateCharts();
+      }
+    }
+
+    // Chart Data Structures
+    const chartData = {
+      alarmsHourly: new Map(), // hour -> count
+      unlocksDaily: new Map()  // day -> count
+    };
+
+    function aggregateChartData(type, eventType, isUnlock = false) {
+      const now = new Date();
+      const ts = now.getTime();
+      
+      if (isUnlock || eventType === 'command') {
+        // Track unlocks by day (YYYY-MM-DD)
+        const dayKey = now.toISOString().split('T')[0];
+        const current = chartData.unlocksDaily.get(dayKey) || 0;
+        chartData.unlocksDaily.set(dayKey, current + 1);
+      } else if (eventType === 'intrusion' || eventType === 'fire' || eventType === 'door') {
+        // Track alarms by hour (YYYY-MM-DD HH:00)
+        const hour = new Date(Math.floor(ts / 3600000) * 3600000);
+        const hourKey = hour.toISOString().slice(0, 13) + ':00';
+        const current = chartData.alarmsHourly.get(hourKey) || 0;
+        chartData.alarmsHourly.set(hourKey, current + 1);
+      }
+    }
+
+    function drawChart(canvasId, dataMap, hours = false) {
+      const canvas = document.getElementById(canvasId);
+      if (!canvas) return;
+      
+      const ctx = canvas.getContext('2d');
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      ctx.scale(dpr, dpr);
+      
+      const w = rect.width;
+      const h = rect.height;
+      const padding = 40;
+      const chartW = w - padding * 2;
+      const chartH = h - padding * 2;
+      
+      // Generate time labels
+      const now = new Date();
+      let labels = [];
+      let values = [];
+      
+      if (hours) {
+        // Last 24 hours
+        for (let i = 23; i >= 0; i--) {
+          const d = new Date(now);
+          d.setHours(d.getHours() - i);
+          const hourKey = d.toISOString().slice(0, 13) + ':00';
+          labels.push(d.getHours() + ':00');
+          values.push(dataMap.get(hourKey) || 0);
+        }
+      } else {
+        // Last 7 days
+        for (let i = 6; i >= 0; i--) {
+          const d = new Date(now);
+          d.setDate(d.getDate() - i);
+          const dayKey = d.toISOString().split('T')[0];
+          labels.push(d.toLocaleDateString('en-US', { weekday: 'short' }));
+          values.push(dataMap.get(dayKey) || 0);
+        }
+      }
+      
+      // Clear canvas
+      ctx.fillStyle = 'rgba(0,0,0,0.1)';
+      ctx.fillRect(0, 0, w, h);
+      
+      // Grid lines
+      ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+      ctx.lineWidth = 1;
+      const maxVal = Math.max(...values, 1);
+      for (let i = 0; i <= 5; i++) {
+        const y = padding + (chartH / 5) * i;
+        ctx.beginPath();
+        ctx.moveTo(padding, y);
+        ctx.lineTo(w - padding, y);
+        ctx.stroke();
+      }
+      
+      // Draw bars
+      const barW = chartW / values.length;
+      const barPadding = barW * 0.2;
+      const actualBarW = barW - barPadding;
+      
+      values.forEach((val, idx) => {
+        const x = padding + barW * idx + barPadding / 2;
+        const barH = (val / maxVal) * chartH;
+        const y = padding + chartH - barH;
+        
+        ctx.fillStyle = idx % 2 === 0 ? 'rgba(34,211,238,0.7)' : 'rgba(168,85,247,0.7)';
+        ctx.fillRect(x, y, actualBarW, barH);
+        
+        // Value label on top of bar
+        if (val > 0) {
+          ctx.fillStyle = '#e5e7eb';
+          ctx.font = 'bold 11px system-ui';
+          ctx.textAlign = 'center';
+          ctx.fillText(val.toString(), x + actualBarW / 2, y - 5);
+        }
+      });
+      
+      // X-axis labels
+      ctx.fillStyle = '#9ca3af';
+      ctx.font = '11px system-ui';
+      ctx.textAlign = 'center';
+      labels.forEach((label, idx) => {
+        const x = padding + barW * idx + barW / 2;
+        ctx.fillText(label, x, h - 12);
+      });
+      
+      // Y-axis labels
+      ctx.textAlign = 'right';
+      for (let i = 0; i <= 5; i++) {
+        const val = Math.round((maxVal / 5) * i);
+        const y = padding + (chartH / 5) * (5 - i);
+        ctx.fillText(val.toString(), padding - 8, y + 4);
+      }
+    }
+
+    function updateCharts() {
+      drawChart('chartAlarmsHourly', chartData.alarmsHourly, true);
+      drawChart('chartUnlocksDaily', chartData.unlocksDaily, false);
+    }
+
+    // Redraw on window resize
+    window.addEventListener('resize', debounce(() => updateCharts(), 200));
+
+    function debounce(fn, ms) {
+      let timeout;
+      return function(...args) {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => fn.apply(this, args), ms);
+      };
+    }
+
+    function updateHistoryTable() {
+      const search = elements.searchBox.value.toLowerCase();
+      const typeFilter = elements.filterType.value;
+      const dateFrom = elements.filterDateFrom.value ? new Date(elements.filterDateFrom.value) : null;
+      const dateTo = elements.filterDateTo.value ? new Date(elements.filterDateTo.value) : null;
+      
+      let filtered = eventHistory.filter(e => {
+        if (search && !e.event.toLowerCase().includes(search) && !e.details.toLowerCase().includes(search)) return false;
+        if (typeFilter && e.type !== typeFilter) return false;
+        if (dateFrom && e.time < dateFrom) return false;
+        if (dateTo && e.time > dateTo) return false;
+        return true;
+      });
+      
+      if (filtered.length === 0) {
+        elements.historyTable.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--muted);">No matching events</td></tr>';
+        return;
+      }
+      
+      elements.historyTable.innerHTML = filtered.slice(0, 100).map(e => `
+        <tr>
+          <td>${e.time.toLocaleString()}</td>
+          <td><span class="event-badge ${e.type}">${e.type}</span></td>
+          <td>${e.event}</td>
+          <td style="color: var(--muted);">${e.details || '-'}</td>
+        </tr>
+      `).join('');
+    }
+
+    function applyFilters() {
+      updateHistoryTable();
+    }
+
+    elements.searchBox.addEventListener('input', updateHistoryTable);
+
+    function sendCommand(cmd) {
+      if (VIEWER_MODE || !ACCESS_TOKEN) {
+        alert('Cannot send commands in viewer mode. Please login with a token.');
+        return;
+      }
+
+      const buttons = ['btnLock', 'btnUnlock', 'btnSilence', 'btnArm'];
+      buttons.forEach(id => document.getElementById(id).disabled = true);
+      
+      const correlationId = 'cmd_' + Date.now();
+      elements.cmdId.textContent = correlationId;
+      elements.cmdMsg.textContent = `Executing ${cmd}...`;
+      elements.cmdProgress.classList.add('active');
+      
+      let timeLeft = 10;
+      elements.cmdTimer.textContent = `${timeLeft}s`;
+      
+      commandTimer = setInterval(() => {
+        timeLeft--;
+        elements.cmdTimer.textContent = `${timeLeft}s`;
+        if (timeLeft <= 0) {
+          clearInterval(commandTimer);
+          elements.cmdMsg.textContent = 'Command timeout';
+          setTimeout(() => {
+            elements.cmdProgress.classList.remove('active');
+            buttons.forEach(id => document.getElementById(id).disabled = false);
+          }, 2000);
+        }
+      }, 1000);
+      
+      const headers = { 'Content-Type': 'application/json' };
+      if (ACCESS_TOKEN) headers['X-Access-Token'] = ACCESS_TOKEN;
+      
+      fetch('/api/command', {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify({ command: cmd, correlation_id: correlationId })
+      }).then(r => {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      }).then((data) => {
+        addEvent('command', `Command ${cmd} sent`, `ID: ${data.nonce || correlationId}`);
+        if (cmd === 'UNLOCK') {
+          aggregateChartData('command', 'command', true); // true = is unlock
+        }
+      }).catch((e) => {
+        clearInterval(commandTimer);
+        elements.cmdMsg.textContent = 'Send failed: ' + e.message;
+        addEvent('system', `Command ${cmd} failed`, e.message);
+        setTimeout(() => {
+          elements.cmdProgress.classList.remove('active');
+          buttons.forEach(id => document.getElementById(id).disabled = false);
+        }, 2000);
+      });
+    }
+
+    function updatePin() {
+      if (VIEWER_MODE || !ACCESS_TOKEN) {
+        elements.pinMsg.textContent = 'Login required to update PIN.';
+        return;
+      }
+      const pin = (elements.pinInput.value || '').trim();
+      if (!/^[0-9]{4,10}$/.test(pin)) {
+        elements.pinMsg.textContent = 'PIN must be 4-10 digits.';
+        return;
+      }
+      elements.pinMsg.textContent = 'Updating...';
+      const headers = { 'Content-Type': 'application/json' };
+      headers['X-Access-Token'] = ACCESS_TOKEN;
+      fetch('/api/pin', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ pin })
+      }).then(r => {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      }).then(() => {
+        elements.pinMsg.textContent = 'PIN updated.';
+        elements.pinInput.value = '';
+      }).catch((e) => {
+        elements.pinMsg.textContent = 'Update failed: ' + e.message;
+      });
+    }
+
+    function handleCommandAck(ack) {
+      if (!ack) return;
+      clearInterval(commandTimer);
+      
+      const buttons = ['btnLock', 'btnUnlock', 'btnSilence', 'btnArm'];
+      elements.cmdMsg.textContent = `Status: ${ack.status || 'completed'} ${ack.reason ? '- ' + ack.reason : ''}`;
+      
+      setTimeout(() => {
+        elements.cmdProgress.classList.remove('active');
+        buttons.forEach(id => document.getElementById(id).disabled = false);
+      }, 2000);
+      
+      const cmdLabel = ack.command ? `Command ${ack.command}` : 'Command';
+      addEvent('command', `${cmdLabel} acknowledged`, `Status: ${ack.status}, Reason: ${ack.reason || 'none'}`);
+      if (ack.command === 'UNLOCK') {
+        aggregateChartData('command', 'command', true);
+      }
+    }
+
+    function connectSSE() {
+      const es = new EventSource('/api/stream');
+      elements.conn.textContent = 'Live';
+      elements.serverDot.className = 'status-dot online';
+      elements.serverStatus.textContent = 'Connected';
+      
+      es.onmessage = (evt) => {
+        try {
+          const msg = JSON.parse(evt.data);
+          
+          if (msg.type === 'state' && msg.payload) {
+            updateState(msg.payload);
+          } else if (msg.type === 'alert' && msg.payload) {
+            const alert = msg.payload;
+            const alertType = alert.type || 'system';
+            const detail = alert.detail || alert.source_type || '';
+            addEvent(alertType, alert.message || 'Alert triggered', detail);
+            aggregateChartData('alert', alertType);
+          } else if (msg.type === 'event' && msg.payload) {
+            const evt = msg.payload;
+            const eventType = evt.type || 'system';
+            addEvent(eventType, evt.message || JSON.stringify(evt), '');
+            aggregateChartData('event', eventType);
+          } else if (msg.type === 'metrics' && msg.payload) {
+            updateMetrics(msg.payload);
+          } else if (msg.type === 'command_ack' && msg.payload) {
+            handleCommandAck(msg.payload);
+          } else if (msg.type === 'cam' && msg.payload) {
+            updateCamera(msg.payload.last_update || msg.ts || Date.now());
+          }
+        } catch (e) {
+          console.warn('Parse error:', e);
+        }
+      };
+      
+      es.onerror = () => {
+        elements.conn.textContent = 'Reconnecting...';
+        elements.serverDot.className = 'status-dot offline';
+        elements.serverStatus.textContent = 'Disconnected';
+        setTimeout(() => es.close(), 500);
+        setTimeout(connectSSE, 2000);
+      };
+    }
+
+    // Start
+    loadStoredToken();
+  </script>
+</body>
+</html>
