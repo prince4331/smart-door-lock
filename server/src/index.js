@@ -68,6 +68,8 @@ const MQTT_TOPIC_ALERT = "smartlock/alert";
 const MQTT_TOPIC_CMD = "smartlock/command";
 const MQTT_TOPIC_METRIC = "smartlock/metric";
 const MQTT_TOPIC_ACK = "smartlock/command_ack";
+const MQTT_TOPIC_CAM_META = "smartlock/cam/meta";
+const MQTT_TOPIC_CAM_CHUNK = "smartlock/cam/chunk";
 
 const sseClients = new Set();
 
@@ -75,6 +77,9 @@ const camDir = path.join(__dirname, "../public/cam");
 const camLatestPath = path.join(camDir, "latest.jpg");
 let camLastUpdate = 0;
 fs.mkdirSync(camDir, { recursive: true });
+
+const camChunks = new Map();
+const CAM_CHUNK_TTL_MS = 120000;
 
 async function sendTelegramMessage(text) {
   if (!TG_BOT_TOKEN || !TG_CHAT_ID) return;
@@ -151,11 +156,14 @@ function normalizeAlertPayload(data) {
   const upper = String(sourceType).toUpperCase();
   let mappedType = "system";
   if (upper.includes("FIRE")) mappedType = "fire";
-  else if (upper.includes("REED") || upper.includes("DOOR")) mappedType = "door";
-  else if (upper.includes("PIR") || upper.includes("MOTION") || upper.includes("ALARM") || upper.includes("CAM_CAPTURE")) mappedType = "intrusion";
+  else if (upper.includes("REED") || upper.includes("DOOR") || upper.includes("LOCK") || upper.includes("UNLOCK")) mappedType = "door";
+  else if (upper.includes("PIR") || upper.includes("MOTION") || upper.includes("ALARM") || upper.includes("CAM_CAPTURE") || upper.includes("PIR_DWELL") || upper.includes("WRONG_PIN") || upper.includes("FORCED")) mappedType = "intrusion";
   base.source_type = sourceType;
   base.type = mappedType;
   base.message = base.message || base.detail || String(sourceType);
+  if (String(base.message).toUpperCase() === "ALERT") {
+    base.message = "System alert";
+  }
   base.detail = base.detail || "";
   return base;
 }
@@ -163,33 +171,44 @@ function normalizeAlertPayload(data) {
 async function handleAlertSideEffects(alertPayload) {
   const src = String(alertPayload.source_type || "").toUpperCase();
   if (src.includes("CAM_CAPTURE")) {
-    await fetchCameraSnapshot();
-    await sendTelegramPhoto("Camera capture triggered by PIR dwell");
+    await sendTelegramMessage("Camera capture requested");
     return;
   }
 
   if (src.includes("FIRE")) {
-    await fetchCameraSnapshot();
     await sendTelegramMessage("ALERT: Fire detected");
     await sendTelegramPhoto("Fire detected");
     return;
   }
 
   if (src.includes("ALARM") || src.includes("FORCED")) {
-    await fetchCameraSnapshot();
     await sendTelegramMessage("ALERT: Intrusion detected");
-    await sendTelegramPhoto("Intrusion detected");
     return;
   }
 
   if (src.includes("TAMPER")) {
     await sendTelegramMessage("ALERT: Tamper detected");
+    return;
+  }
+
+  if (src.includes("UNLOCK")) {
+    await sendTelegramMessage("Door unlocked");
+    return;
+  }
+
+  if (src.includes("WRONG_PIN")) {
+    await sendTelegramMessage("ALERT: Too many wrong PIN attempts");
+    return;
+  }
+
+  if (src.includes("PIR_DWELL")) {
+    await sendTelegramMessage("ALERT: PIR motion > 20s");
   }
 }
 
 mqttClient.on("connect", () => {
   console.log(`[MQTT] Connected to ${MQTT_BROKER}`);
-  mqttClient.subscribe([MQTT_TOPIC_STATE, MQTT_TOPIC_ALERT, MQTT_TOPIC_METRIC, MQTT_TOPIC_ACK], { qos: 1 });
+  mqttClient.subscribe([MQTT_TOPIC_STATE, MQTT_TOPIC_ALERT, MQTT_TOPIC_METRIC, MQTT_TOPIC_ACK, MQTT_TOPIC_CAM_META, MQTT_TOPIC_CAM_CHUNK], { qos: 1 });
 });
 
 mqttClient.on("reconnect", () => console.log("[MQTT] Reconnecting"));
@@ -240,11 +259,99 @@ mqttClient.on("message", async (topic, payload) => {
   if (topic === MQTT_TOPIC_ALERT) {
     const alertPayload = normalized(parsed);
     alertPayload.last_seen = ts;
+    // Ignore generic "ALERT" noise to prevent spammy system alerts
+    if (String(alertPayload.source_type || "").toUpperCase() === "ALERT") {
+      return;
+    }
+    if (String(alertPayload.source_type || "").toUpperCase().includes("CAM_CAPTURE")) {
+      handleAlertSideEffects(alertPayload);
+      return;
+    }
     db.data.events.unshift({ ts, topic, payload: alertPayload });
     db.data.events = db.data.events.slice(0, 500);
     await db.write();
     broadcast({ type: "alert", topic, ts, payload: alertPayload });
     handleAlertSideEffects(alertPayload);
+    return;
+  }
+
+  if (topic === MQTT_TOPIC_CAM_META) {
+    if (typeof parsed !== "object" || parsed === null) return;
+    const seq = Number(parsed.seq);
+    const len = Number(parsed.len);
+    const chunk = Number(parsed.chunk || 2048);
+    if (!Number.isFinite(seq) || !Number.isFinite(len)) return;
+
+    const total = Math.max(1, Math.ceil(len / chunk));
+    camChunks.set(seq, {
+      seq,
+      len,
+      total,
+      received: 0,
+      chunks: new Map(),
+      ts: Date.now(),
+    });
+    return;
+  }
+
+  if (topic === MQTT_TOPIC_CAM_CHUNK) {
+    if (!Buffer.isBuffer(payload) || payload.length < 8) return;
+    const seq = payload.readUInt32BE(0);
+    const idx = payload.readUInt16BE(4);
+    const total = payload.readUInt16BE(6);
+    const data = payload.subarray(8);
+
+    let state = camChunks.get(seq);
+    if (!state) {
+      state = {
+        seq,
+        len: 0,
+        total,
+        received: 0,
+        chunks: new Map(),
+        ts: Date.now(),
+      };
+      camChunks.set(seq, state);
+    }
+
+    if (!state.chunks.has(idx)) {
+      state.chunks.set(idx, data);
+      state.received += 1;
+      state.ts = Date.now();
+    }
+
+    if (state.total && state.received >= state.total) {
+      const buffers = [];
+      for (let i = 0; i < state.total; i++) {
+        buffers.push(state.chunks.get(i) || Buffer.alloc(0));
+      }
+      const image = Buffer.concat(buffers);
+      fs.writeFileSync(camLatestPath, image);
+      camLastUpdate = Date.now();
+      broadcast({ type: "cam", ts: camLastUpdate, payload: { last_update: camLastUpdate } });
+
+      const camEvent = {
+        type: "camera",
+        message: "Camera capture",
+        detail: `seq ${seq}`,
+        last_seen: camLastUpdate,
+      };
+      db.data.events.unshift({ ts: camLastUpdate, topic: "smartlock/cam", payload: camEvent });
+      db.data.events = db.data.events.slice(0, 500);
+      await db.write();
+      broadcast({ type: "event", topic: "smartlock/cam", ts: camLastUpdate, payload: camEvent });
+
+      sendTelegramPhoto("Camera capture");
+      camChunks.delete(seq);
+    }
+
+    // Cleanup old entries
+    const now = Date.now();
+    for (const [key, value] of camChunks.entries()) {
+      if (now - value.ts > CAM_CHUNK_TTL_MS) {
+        camChunks.delete(key);
+      }
+    }
     return;
   }
 

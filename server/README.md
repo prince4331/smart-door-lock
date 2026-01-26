@@ -20,19 +20,14 @@ Defaults:
 - Database: ./data.db (SQLite, WAL mode)
 
 ## API
-- `GET /api/health` – service and MQTT status
-- `GET /api/state` – latest device state
-- `GET /api/events?limit=50` – recent events
-- `POST /api/command` – JSON `{ "command": "LOCK|UNLOCK|SILENCE" }`
-- `GET /api/stream` – SSE feed for live updates
+- `GET /api/health` - service and MQTT status
+- `GET /api/state` - latest device state
+- `GET /api/events?limit=50` - recent events
+- `POST /api/command` - JSON `{ "command": "LOCK|UNLOCK|SILENCE" }`
+- `GET /api/stream` - SSE feed for live updates
 - Static dashboard at `/` (served from public/)
 
-
-## Camera upload
-- `POST /api/cam/upload` with `image/jpeg` body
-- Optional header: `X-Cam-Token` (must match `CAM_TOKEN` in `.env`)
-- Latest snapshot served from `/cam/latest.jpg`
-## Camera upload
+## Camera
 - `POST /api/cam/upload` with `image/jpeg` body
 - `POST /api/cam/capture` to pull a snapshot from ESP32-CAM
 - `GET /api/cam/stream` proxies MJPEG stream
@@ -40,9 +35,16 @@ Defaults:
 
 ## PIN Management
 - `POST /api/pin` JSON `{ "pin": "1069" }` (requires access token)
+
 ## Topics
-- Ingest: `smartlock/state`, `smartlock/alert`, `smartlock/metric`
+- Ingest: `smartlock/state`, `smartlock/alert`, `smartlock/metric`, `smartlock/command_ack`
+- Camera ingest (MQTT chunks): `smartlock/cam/meta`, `smartlock/cam/chunk`
 - Commands (outbound): `smartlock/command`
+
+## Telegram
+Set these in `.env` (do not hardcode in firmware):
+- `TG_BOT_TOKEN`
+- `TG_CHAT_ID`
 
 ## Notes
 - Broker credentials can be set via environment variables

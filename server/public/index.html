@@ -198,6 +198,12 @@
     .camera-frame { background: rgba(8, 10, 14, 0.55); border-radius: 14px; padding: 8px; }
     .camera-frame img { width: 100%; height: auto; border-radius: 10px; display: block; object-fit: cover; aspect-ratio: 16 / 9; }
     .camera-meta { margin-top: 8px; font-size: 12px; color: var(--muted); display: flex; gap: 6px; align-items: center; }
+    .cam-placeholder { display: none; align-items: center; justify-content: center; color: var(--muted); background: rgba(0,0,0,0.35); border-radius: 10px; aspect-ratio: 16 / 9; font-size: 12px; }
+    .cam-placeholder.show { display: flex; }
+    .cam-spinner { display: none; position: absolute; inset: 0; align-items: center; justify-content: center; font-size: 12px; color: var(--muted); background: rgba(0,0,0,0.3); border-radius: 10px; }
+    .cam-spinner.show { display: flex; }
+    .cam-error { color: var(--danger); font-size: 12px; margin-top: 6px; display: none; }
+    .cam-error.show { display: block; }
 
     .event-feed { max-height: 260px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
     .event-item { padding: 10px; background: rgba(10, 14, 18, 0.5); border-left: 3px solid var(--accent); border-radius: 10px; font-size: 12px; line-height: 1.5; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04); }
@@ -395,6 +401,9 @@
               <button class="btn-secondary" onclick="updatePin()">Update PIN</button>
             </div>
             <div id="pinMsg" style="margin-top: 6px; font-size: 12px; color: var(--muted);"></div>
+            <div style="margin-top: 6px; font-size: 11px; color: var(--muted);">
+              Default PIN: 1069 • '#' submit • '*' clear • 'C' lock when unlocked
+            </div>
           </div>
         </div>
 
@@ -428,7 +437,9 @@
         <div class="card">
           <h2>Camera</h2>
           <div class="camera-frame">
+            <div id="camPlaceholder" class="cam-placeholder show">No image yet</div>
             <img id="camStream" src="" alt="Latest camera snapshot" />
+            <div id="camSpinner" class="cam-spinner">Loading...</div>
           </div>
           <div class="camera-meta">
             <span class="label">Last Update:</span>
@@ -437,6 +448,7 @@
           <div style="margin-top: 8px;">
             <button class="btn-secondary" onclick="refreshCamera()">Refresh</button>
           </div>
+          <div id="camError" class="cam-error"></div>
         </div>
 
         <div class="card">
@@ -545,8 +557,11 @@
       alarmStatusText: document.getElementById('alarmStatusText'),
       pirStatusText: document.getElementById('pirStatusText'),
       fireStatusText: document.getElementById('fireStatusText'),
-      camStream: document.getElementById('camStream'),
-      camStatus: document.getElementById('camStatus'),
+        camStream: document.getElementById('camStream'),
+        camPlaceholder: document.getElementById('camPlaceholder'),
+        camSpinner: document.getElementById('camSpinner'),
+        camError: document.getElementById('camError'),
+        camStatus: document.getElementById('camStatus'),
       pinInput: document.getElementById('pinInput'),
       pinMsg: document.getElementById('pinMsg')
     };
@@ -642,13 +657,44 @@
 
     let camLastUpdate = 0;
 
+    function setCameraLoading(isLoading) {
+      if (elements.camSpinner) {
+        elements.camSpinner.classList.toggle('show', isLoading);
+      }
+    }
+
+    function setCameraError(message) {
+      if (!elements.camError) return;
+      if (message) {
+        elements.camError.textContent = message;
+        elements.camError.classList.add('show');
+      } else {
+        elements.camError.textContent = '';
+        elements.camError.classList.remove('show');
+      }
+    }
+
     function updateCamera(ts) {
       if (!ts) return;
       camLastUpdate = ts;
       elements.camStatus.textContent = new Date(ts).toLocaleTimeString();
-      if (elements.camStream) {
-        elements.camStream.src = `/cam/latest.jpg?ts=${ts}`;
-      }
+      if (!elements.camStream) return;
+
+      setCameraError('');
+      setCameraLoading(true);
+      elements.camPlaceholder.classList.remove('show');
+
+      const img = elements.camStream;
+      img.onload = () => {
+        setCameraLoading(false);
+        setCameraError('');
+      };
+      img.onerror = () => {
+        setCameraLoading(false);
+        setCameraError('Failed to load image');
+        elements.camPlaceholder.classList.add('show');
+      };
+      img.src = `/cam/latest.jpg?ts=${ts}`;
     }
 
     async function loadCameraStatus() {
@@ -658,6 +704,9 @@
         const data = await res.json();
         if (data.last_update) {
           updateCamera(data.last_update);
+        } else if (elements.camPlaceholder) {
+          elements.camPlaceholder.classList.add('show');
+          setCameraLoading(false);
         }
       } catch (e) {
         // ignore
@@ -695,6 +744,10 @@
             if (cmd === 'UNLOCK') {
               aggregateChartData('command', 'command', true);
             }
+          } else if (topic === 'smartlock/cam') {
+            const msg = payload.message || 'Camera capture';
+            const detail = payload.detail || '';
+            addEvent('system', msg, detail, ts);
           }
         });
         suppressUiUpdates = false;
