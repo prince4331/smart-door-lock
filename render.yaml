@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: smartlock-server
+    env: node
+    buildCommand: npm install
+    startCommand: node src/index.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 8080
+      - key: MQTT_BROKER
+        value: mqtts://7073d14c632e4e68b0ec38acf49d0c37.s1.eu.hivemq.cloud:8883
+      - key: MQTT_USERNAME
+        value: princeofhell069
+      - key: MQTT_PASSWORD
+        sync: false
+      - key: DASH_TOKEN
+        sync: false
+      - key: RATE_LIMIT_MAX
+        value: 20
+      - key: RATE_LIMIT_WINDOW_SECONDS
+        value: 60

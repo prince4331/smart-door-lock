@@ -1,0 +1,6527 @@
+{
+  "state": {
+    "ts": 1769391366024,
+    "payload": {
+      "device_id": "smartlock-68fe718af264",
+      "lock_state": "LOCKED",
+      "security_mode": "NIGHT",
+      "sensors": {
+        "pir": false,
+        "reed": false,
+        "fire": false
+      },
+      "alarm": false,
+      "alarm_silenced": false,
+      "boot_count": 535,
+      "failed_attempts": 0,
+      "timestamp": 1769391365,
+      "last_seen": 1769391366024
+    }
+  },
+  "events": [
+    {
+      "ts": 1769391362338,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -68,
+        "heap_free": 171780,
+        "uptime_s": 1386,
+        "reconnects": 22,
+        "fw_version": "1",
+        "timestamp": 1769391362,
+        "last_seen": 1769391362338
+      }
+    },
+    {
+      "ts": 1769391359461,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769391359,
+        "source_type": "PIR",
+        "last_seen": 1769391359461
+      }
+    },
+    {
+      "ts": 1769391351484,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "System alert",
+        "detail": "",
+        "last_seen": 1769391351484
+      }
+    },
+    {
+      "ts": 1769391347081,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769391346,
+        "source_type": "PIR",
+        "last_seen": 1769391347081
+      }
+    },
+    {
+      "ts": 1769391332260,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -56,
+        "heap_free": 171736,
+        "uptime_s": 1356,
+        "reconnects": 21,
+        "fw_version": "1",
+        "timestamp": 1769391332,
+        "last_seen": 1769391332260
+      }
+    },
+    {
+      "ts": 1769391331516,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769391331,
+        "source_type": "PIR",
+        "last_seen": 1769391331516
+      }
+    },
+    {
+      "ts": 1769391318409,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769391318,
+        "source_type": "PIR",
+        "last_seen": 1769391318409
+      }
+    },
+    {
+      "ts": 1769391306339,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769391306,
+        "source_type": "PIR",
+        "last_seen": 1769391306339
+      }
+    },
+    {
+      "ts": 1769391302318,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -55,
+        "heap_free": 171816,
+        "uptime_s": 1326,
+        "reconnects": 21,
+        "fw_version": "1",
+        "timestamp": 1769391302,
+        "last_seen": 1769391302318
+      }
+    },
+    {
+      "ts": 1769391292898,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769391292,
+        "source_type": "PIR",
+        "last_seen": 1769391292898
+      }
+    },
+    {
+      "ts": 1769391289621,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "System alert",
+        "detail": "",
+        "last_seen": 1769391289621
+      }
+    },
+    {
+      "ts": 1769391280303,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769391280,
+        "source_type": "PIR",
+        "last_seen": 1769391280303
+      }
+    },
+    {
+      "ts": 1769391272265,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -53,
+        "heap_free": 171816,
+        "uptime_s": 1296,
+        "reconnects": 20,
+        "fw_version": "1",
+        "timestamp": 1769391272,
+        "last_seen": 1769391272265
+      }
+    },
+    {
+      "ts": 1769391266752,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769391266,
+        "source_type": "PIR",
+        "last_seen": 1769391266752
+      }
+    },
+    {
+      "ts": 1769391242730,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769391242,
+        "source_type": "PIR",
+        "last_seen": 1769391242730
+      }
+    },
+    {
+      "ts": 1769391242265,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -55,
+        "heap_free": 171816,
+        "uptime_s": 1266,
+        "reconnects": 20,
+        "fw_version": "1",
+        "timestamp": 1769391242,
+        "last_seen": 1769391242265
+      }
+    },
+    {
+      "ts": 1769391227426,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "System alert",
+        "detail": "",
+        "last_seen": 1769391227426
+      }
+    },
+    {
+      "ts": 1769391227186,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769391227,
+        "source_type": "PIR",
+        "last_seen": 1769391227186
+      }
+    },
+    {
+      "ts": 1769391215146,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769391215,
+        "source_type": "PIR",
+        "last_seen": 1769391215146
+      }
+    },
+    {
+      "ts": 1769391212253,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -55,
+        "heap_free": 171816,
+        "uptime_s": 1236,
+        "reconnects": 19,
+        "fw_version": "1",
+        "timestamp": 1769391212,
+        "last_seen": 1769391212253
+      }
+    },
+    {
+      "ts": 1769391203614,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769391203,
+        "source_type": "PIR",
+        "last_seen": 1769391203614
+      }
+    },
+    {
+      "ts": 1769391191078,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769391191,
+        "source_type": "PIR",
+        "last_seen": 1769391191078
+      }
+    },
+    {
+      "ts": 1769391182262,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -51,
+        "heap_free": 171816,
+        "uptime_s": 1206,
+        "reconnects": 19,
+        "fw_version": "1",
+        "timestamp": 1769391182,
+        "last_seen": 1769391182262
+      }
+    },
+    {
+      "ts": 1769391176541,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769391176,
+        "source_type": "PIR",
+        "last_seen": 1769391176541
+      }
+    },
+    {
+      "ts": 1769391164746,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "System alert",
+        "detail": "",
+        "last_seen": 1769391164746
+      }
+    },
+    {
+      "ts": 1769391164513,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769391164,
+        "source_type": "PIR",
+        "last_seen": 1769391164513
+      }
+    },
+    {
+      "ts": 1769391152712,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -70,
+        "heap_free": 169660,
+        "uptime_s": 1176,
+        "reconnects": 18,
+        "fw_version": "1",
+        "timestamp": 1769391152,
+        "last_seen": 1769391152712
+      }
+    },
+    {
+      "ts": 1769391151986,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769391151,
+        "source_type": "PIR",
+        "last_seen": 1769391151986
+      }
+    },
+    {
+      "ts": 1769391138612,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769391138,
+        "source_type": "PIR",
+        "last_seen": 1769391138612
+      }
+    },
+    {
+      "ts": 1769391126493,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769391126,
+        "source_type": "PIR",
+        "last_seen": 1769391126493
+      }
+    },
+    {
+      "ts": 1769391122270,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -63,
+        "heap_free": 171796,
+        "uptime_s": 1146,
+        "reconnects": 18,
+        "fw_version": "1",
+        "timestamp": 1769391122,
+        "last_seen": 1769391122270
+      }
+    },
+    {
+      "ts": 1769391114002,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769391113,
+        "source_type": "PIR",
+        "last_seen": 1769391114002
+      }
+    },
+    {
+      "ts": 1769391102859,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "System alert",
+        "detail": "",
+        "last_seen": 1769391102859
+      }
+    },
+    {
+      "ts": 1769391101392,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769391101,
+        "source_type": "PIR",
+        "last_seen": 1769391101392
+      }
+    },
+    {
+      "ts": 1769391092241,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -62,
+        "heap_free": 171788,
+        "uptime_s": 1116,
+        "reconnects": 17,
+        "fw_version": "1",
+        "timestamp": 1769391092,
+        "last_seen": 1769391092241
+      }
+    },
+    {
+      "ts": 1769391087860,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769391087,
+        "source_type": "PIR",
+        "last_seen": 1769391087860
+      }
+    },
+    {
+      "ts": 1769391074830,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769391074,
+        "source_type": "PIR",
+        "last_seen": 1769391074830
+      }
+    },
+    {
+      "ts": 1769391062224,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -68,
+        "heap_free": 171704,
+        "uptime_s": 1086,
+        "reconnects": 17,
+        "fw_version": "1",
+        "timestamp": 1769391062,
+        "last_seen": 1769391062224
+      }
+    },
+    {
+      "ts": 1769391061297,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769391061,
+        "source_type": "PIR",
+        "last_seen": 1769391061297
+      }
+    },
+    {
+      "ts": 1769391048765,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769391048,
+        "source_type": "PIR",
+        "last_seen": 1769391048765
+      }
+    },
+    {
+      "ts": 1769391040286,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "System alert",
+        "detail": "",
+        "last_seen": 1769391040286
+      }
+    },
+    {
+      "ts": 1769391036775,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769391036,
+        "source_type": "PIR",
+        "last_seen": 1769391036775
+      }
+    },
+    {
+      "ts": 1769391032265,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -57,
+        "heap_free": 171812,
+        "uptime_s": 1056,
+        "reconnects": 16,
+        "fw_version": "1",
+        "timestamp": 1769391032,
+        "last_seen": 1769391032265
+      }
+    },
+    {
+      "ts": 1769391002262,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -63,
+        "heap_free": 171832,
+        "uptime_s": 1026,
+        "reconnects": 16,
+        "fw_version": "1",
+        "timestamp": 1769391002,
+        "last_seen": 1769391002262
+      }
+    },
+    {
+      "ts": 1769390977737,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "System alert",
+        "detail": "",
+        "last_seen": 1769390977737
+      }
+    },
+    {
+      "ts": 1769390972237,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -62,
+        "heap_free": 171804,
+        "uptime_s": 996,
+        "reconnects": 15,
+        "fw_version": "1",
+        "timestamp": 1769390972,
+        "last_seen": 1769390972237
+      }
+    },
+    {
+      "ts": 1769390942232,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -71,
+        "heap_free": 171804,
+        "uptime_s": 966,
+        "reconnects": 15,
+        "fw_version": "1",
+        "timestamp": 1769390942,
+        "last_seen": 1769390942232
+      }
+    },
+    {
+      "ts": 1769390936241,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769390936,
+        "source_type": "PIR",
+        "last_seen": 1769390936241
+      }
+    },
+    {
+      "ts": 1769390922711,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769390922,
+        "source_type": "PIR",
+        "last_seen": 1769390922711
+      }
+    },
+    {
+      "ts": 1769390915722,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "System alert",
+        "detail": "",
+        "last_seen": 1769390915722
+      }
+    },
+    {
+      "ts": 1769390912229,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -66,
+        "heap_free": 171692,
+        "uptime_s": 936,
+        "reconnects": 14,
+        "fw_version": "1",
+        "timestamp": 1769390912,
+        "last_seen": 1769390912229
+      }
+    },
+    {
+      "ts": 1769390911177,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769390911,
+        "source_type": "PIR",
+        "last_seen": 1769390911177
+      }
+    },
+    {
+      "ts": 1769390884650,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769390884,
+        "source_type": "PIR",
+        "last_seen": 1769390884650
+      }
+    },
+    {
+      "ts": 1769390882229,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -54,
+        "heap_free": 171780,
+        "uptime_s": 906,
+        "reconnects": 14,
+        "fw_version": "1",
+        "timestamp": 1769390882,
+        "last_seen": 1769390882229
+      }
+    },
+    {
+      "ts": 1769390869627,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769390869,
+        "source_type": "PIR",
+        "last_seen": 1769390869627
+      }
+    },
+    {
+      "ts": 1769390855709,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769390855,
+        "source_type": "PIR",
+        "last_seen": 1769390855709
+      }
+    },
+    {
+      "ts": 1769390853611,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "System alert",
+        "detail": "",
+        "last_seen": 1769390853611
+      }
+    },
+    {
+      "ts": 1769390852204,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -57,
+        "heap_free": 171824,
+        "uptime_s": 876,
+        "reconnects": 13,
+        "fw_version": "1",
+        "timestamp": 1769390852,
+        "last_seen": 1769390852204
+      }
+    },
+    {
+      "ts": 1769390843528,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769390843,
+        "source_type": "PIR",
+        "last_seen": 1769390843528
+      }
+    },
+    {
+      "ts": 1769390829996,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769390829,
+        "source_type": "PIR",
+        "last_seen": 1769390829996
+      }
+    },
+    {
+      "ts": 1769390822196,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -62,
+        "heap_free": 171824,
+        "uptime_s": 846,
+        "reconnects": 13,
+        "fw_version": "1",
+        "timestamp": 1769390822,
+        "last_seen": 1769390822196
+      }
+    },
+    {
+      "ts": 1769390791959,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "System alert",
+        "detail": "",
+        "last_seen": 1769390791959
+      }
+    },
+    {
+      "ts": 1769390762227,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -61,
+        "heap_free": 171784,
+        "uptime_s": 786,
+        "reconnects": 12,
+        "fw_version": "1",
+        "timestamp": 1769390762,
+        "last_seen": 1769390762227
+      }
+    },
+    {
+      "ts": 1769390735990,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769390735,
+        "source_type": "PIR",
+        "last_seen": 1769390735990
+      }
+    },
+    {
+      "ts": 1769390732211,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -58,
+        "heap_free": 171712,
+        "uptime_s": 756,
+        "reconnects": 12,
+        "fw_version": "1",
+        "timestamp": 1769390732,
+        "last_seen": 1769390732211
+      }
+    },
+    {
+      "ts": 1769390729312,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "System alert",
+        "detail": "",
+        "last_seen": 1769390729312
+      }
+    },
+    {
+      "ts": 1769390713967,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769390713,
+        "source_type": "PIR",
+        "last_seen": 1769390713967
+      }
+    },
+    {
+      "ts": 1769390702204,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -60,
+        "heap_free": 171796,
+        "uptime_s": 725,
+        "reconnects": 11,
+        "fw_version": "1",
+        "timestamp": 1769390702,
+        "last_seen": 1769390702204
+      }
+    },
+    {
+      "ts": 1769390672204,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -58,
+        "heap_free": 171728,
+        "uptime_s": 695,
+        "reconnects": 11,
+        "fw_version": "1",
+        "timestamp": 1769390672,
+        "last_seen": 1769390672204
+      }
+    },
+    {
+      "ts": 1769390666912,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "System alert",
+        "detail": "",
+        "last_seen": 1769390666912
+      }
+    },
+    {
+      "ts": 1769390642209,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -61,
+        "heap_free": 171788,
+        "uptime_s": 665,
+        "reconnects": 10,
+        "fw_version": "1",
+        "timestamp": 1769390642,
+        "last_seen": 1769390642209
+      }
+    },
+    {
+      "ts": 1769390612213,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -61,
+        "heap_free": 171788,
+        "uptime_s": 635,
+        "reconnects": 10,
+        "fw_version": "1",
+        "timestamp": 1769390612,
+        "last_seen": 1769390612213
+      }
+    },
+    {
+      "ts": 1769390604783,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "System alert",
+        "detail": "",
+        "last_seen": 1769390604783
+      }
+    },
+    {
+      "ts": 1769390582177,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -61,
+        "heap_free": 171784,
+        "uptime_s": 605,
+        "reconnects": 9,
+        "fw_version": "1",
+        "timestamp": 1769390582,
+        "last_seen": 1769390582177
+      }
+    },
+    {
+      "ts": 1769390552185,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -61,
+        "heap_free": 171784,
+        "uptime_s": 575,
+        "reconnects": 9,
+        "fw_version": "1",
+        "timestamp": 1769390552,
+        "last_seen": 1769390552185
+      }
+    },
+    {
+      "ts": 1769390542870,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "System alert",
+        "detail": "",
+        "last_seen": 1769390542870
+      }
+    },
+    {
+      "ts": 1769390522212,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -60,
+        "heap_free": 171756,
+        "uptime_s": 545,
+        "reconnects": 8,
+        "fw_version": "1",
+        "timestamp": 1769390522,
+        "last_seen": 1769390522212
+      }
+    },
+    {
+      "ts": 1769390492215,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -62,
+        "heap_free": 171756,
+        "uptime_s": 515,
+        "reconnects": 8,
+        "fw_version": "1",
+        "timestamp": 1769390492,
+        "last_seen": 1769390492215
+      }
+    },
+    {
+      "ts": 1769390480832,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "System alert",
+        "detail": "",
+        "last_seen": 1769390480832
+      }
+    },
+    {
+      "ts": 1769390462208,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -61,
+        "heap_free": 171816,
+        "uptime_s": 485,
+        "reconnects": 7,
+        "fw_version": "1",
+        "timestamp": 1769390462,
+        "last_seen": 1769390462208
+      }
+    },
+    {
+      "ts": 1769390432209,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -62,
+        "heap_free": 171812,
+        "uptime_s": 455,
+        "reconnects": 7,
+        "fw_version": "1",
+        "timestamp": 1769390432,
+        "last_seen": 1769390432209
+      }
+    },
+    {
+      "ts": 1769390418823,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "System alert",
+        "detail": "",
+        "last_seen": 1769390418823
+      }
+    },
+    {
+      "ts": 1769390402475,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -61,
+        "heap_free": 171776,
+        "uptime_s": 425,
+        "reconnects": 6,
+        "fw_version": "1",
+        "timestamp": 1769390402,
+        "last_seen": 1769390402475
+      }
+    },
+    {
+      "ts": 1769390372190,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -62,
+        "heap_free": 171776,
+        "uptime_s": 395,
+        "reconnects": 6,
+        "fw_version": "1",
+        "timestamp": 1769390372,
+        "last_seen": 1769390372190
+      }
+    },
+    {
+      "ts": 1769390356680,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "System alert",
+        "detail": "",
+        "last_seen": 1769390356680
+      }
+    },
+    {
+      "ts": 1769390342149,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -61,
+        "heap_free": 171752,
+        "uptime_s": 365,
+        "reconnects": 5,
+        "fw_version": "1",
+        "timestamp": 1769390342,
+        "last_seen": 1769390342149
+      }
+    },
+    {
+      "ts": 1769390312139,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -61,
+        "heap_free": 171776,
+        "uptime_s": 335,
+        "reconnects": 5,
+        "fw_version": "1",
+        "timestamp": 1769390312,
+        "last_seen": 1769390312139
+      }
+    },
+    {
+      "ts": 1769390293779,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "System alert",
+        "detail": "",
+        "last_seen": 1769390293779
+      }
+    },
+    {
+      "ts": 1769390282161,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -61,
+        "heap_free": 171772,
+        "uptime_s": 305,
+        "reconnects": 4,
+        "fw_version": "1",
+        "timestamp": 1769390282,
+        "last_seen": 1769390282161
+      }
+    },
+    {
+      "ts": 1769390278421,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769390278,
+        "source_type": "PIR",
+        "last_seen": 1769390278421
+      }
+    },
+    {
+      "ts": 1769390267109,
+      "topic": "smartlock/cam",
+      "payload": {
+        "type": "camera",
+        "message": "Camera capture",
+        "detail": "seq 2",
+        "last_seen": 1769390267109
+      }
+    },
+    {
+      "ts": 1769390266394,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769390266,
+        "source_type": "PIR",
+        "last_seen": 1769390266394
+      }
+    },
+    {
+      "ts": 1769390252377,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769390252,
+        "source_type": "PIR",
+        "last_seen": 1769390252377
+      }
+    },
+    {
+      "ts": 1769390252148,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -62,
+        "heap_free": 171772,
+        "uptime_s": 275,
+        "reconnects": 4,
+        "fw_version": "1",
+        "timestamp": 1769390252,
+        "last_seen": 1769390252148
+      }
+    },
+    {
+      "ts": 1769390236831,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769390236,
+        "source_type": "PIR",
+        "last_seen": 1769390236831
+      }
+    },
+    {
+      "ts": 1769390231334,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "System alert",
+        "detail": "",
+        "last_seen": 1769390231334
+      }
+    },
+    {
+      "ts": 1769390225520,
+      "topic": "smartlock/cam",
+      "payload": {
+        "type": "camera",
+        "message": "Camera capture",
+        "detail": "seq 1",
+        "last_seen": 1769390225520
+      }
+    },
+    {
+      "ts": 1769390224807,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769390224,
+        "source_type": "PIR",
+        "last_seen": 1769390224807
+      }
+    },
+    {
+      "ts": 1769390222158,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -62,
+        "heap_free": 171784,
+        "uptime_s": 245,
+        "reconnects": 3,
+        "fw_version": "1",
+        "timestamp": 1769390222,
+        "last_seen": 1769390222158
+      }
+    },
+    {
+      "ts": 1769390210279,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769390210,
+        "source_type": "PIR",
+        "last_seen": 1769390210279
+      }
+    },
+    {
+      "ts": 1769390198259,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769390198,
+        "source_type": "PIR",
+        "last_seen": 1769390198259
+      }
+    },
+    {
+      "ts": 1769390192175,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -62,
+        "heap_free": 171784,
+        "uptime_s": 215,
+        "reconnects": 3,
+        "fw_version": "1",
+        "timestamp": 1769390192,
+        "last_seen": 1769390192175
+      }
+    },
+    {
+      "ts": 1769390186434,
+      "topic": "smartlock/cam",
+      "payload": {
+        "type": "camera",
+        "message": "Camera capture",
+        "detail": "seq 0",
+        "last_seen": 1769390186434
+      }
+    },
+    {
+      "ts": 1769390185725,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769390185,
+        "source_type": "PIR",
+        "last_seen": 1769390185725
+      }
+    },
+    {
+      "ts": 1769390171693,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769390171,
+        "source_type": "PIR",
+        "last_seen": 1769390171693
+      }
+    },
+    {
+      "ts": 1769390168883,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "System alert",
+        "detail": "",
+        "last_seen": 1769390168883
+      }
+    },
+    {
+      "ts": 1769390162178,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -65,
+        "heap_free": 171812,
+        "uptime_s": 185,
+        "reconnects": 2,
+        "fw_version": "1",
+        "timestamp": 1769390162,
+        "last_seen": 1769390162178
+      }
+    },
+    {
+      "ts": 1769390159631,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769390159,
+        "source_type": "PIR",
+        "last_seen": 1769390159631
+      }
+    },
+    {
+      "ts": 1769390144097,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769390144,
+        "source_type": "PIR",
+        "last_seen": 1769390144097
+      }
+    },
+    {
+      "ts": 1769390133220,
+      "topic": "smartlock/command_ack",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "command": "ARM",
+        "status": "ok",
+        "reason": "armed",
+        "timestamp": 1769390132,
+        "last_seen": 1769390133220
+      }
+    },
+    {
+      "ts": 1769390132305,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -65,
+        "heap_free": 167980,
+        "uptime_s": 155,
+        "reconnects": 2,
+        "fw_version": "1",
+        "timestamp": 1769390132,
+        "last_seen": 1769390132305
+      }
+    },
+    {
+      "ts": 1769390132072,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769390132,
+        "source_type": "PIR",
+        "last_seen": 1769390132072
+      }
+    },
+    {
+      "ts": 1769390129697,
+      "topic": "smartlock/command_ack",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "command": "SILENCE",
+        "status": "ok",
+        "reason": "silenced",
+        "timestamp": 1769390129,
+        "last_seen": 1769390129697
+      }
+    },
+    {
+      "ts": 1769390123793,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "door",
+        "message": "Keypad lock",
+        "detail": "Keypad lock",
+        "timestamp": 1769390123,
+        "source_type": "LOCK",
+        "last_seen": 1769390123793
+      }
+    },
+    {
+      "ts": 1769390120780,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769390120,
+        "source_type": "PIR",
+        "last_seen": 1769390120780
+      }
+    },
+    {
+      "ts": 1769390117498,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "door",
+        "message": "Keypad unlock",
+        "detail": "Keypad unlock",
+        "timestamp": 1769390117,
+        "source_type": "UNLOCK",
+        "last_seen": 1769390117498
+      }
+    },
+    {
+      "ts": 1769390106582,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "System alert",
+        "detail": "",
+        "last_seen": 1769390106582
+      }
+    },
+    {
+      "ts": 1769390102127,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -67,
+        "heap_free": 171516,
+        "uptime_s": 125,
+        "reconnects": 1,
+        "fw_version": "1",
+        "timestamp": 1769390102,
+        "last_seen": 1769390102127
+      }
+    },
+    {
+      "ts": 1769390097088,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "door",
+        "message": "Keypad lock",
+        "detail": "Keypad lock",
+        "timestamp": 1769390096,
+        "source_type": "LOCK",
+        "last_seen": 1769390097088
+      }
+    },
+    {
+      "ts": 1769390094830,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769390094,
+        "source_type": "PIR",
+        "last_seen": 1769390094830
+      }
+    },
+    {
+      "ts": 1769390088554,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "door",
+        "message": "Keypad unlock",
+        "detail": "Keypad unlock",
+        "timestamp": 1769390088,
+        "source_type": "UNLOCK",
+        "last_seen": 1769390088554
+      }
+    },
+    {
+      "ts": 1769390082611,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769390082,
+        "source_type": "PIR",
+        "last_seen": 1769390082611
+      }
+    },
+    {
+      "ts": 1769390077875,
+      "topic": "smartlock/command_ack",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "command": "SET_PIN",
+        "status": "ok",
+        "reason": "pin updated",
+        "timestamp": 1769390077,
+        "last_seen": 1769390077875
+      }
+    },
+    {
+      "ts": 1769390072128,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -62,
+        "heap_free": 171676,
+        "uptime_s": 95,
+        "reconnects": 1,
+        "fw_version": "1",
+        "timestamp": 1769390072,
+        "last_seen": 1769390072128
+      }
+    },
+    {
+      "ts": 1769390071505,
+      "topic": "smartlock/command_ack",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "command": "SILENCE",
+        "status": "ok",
+        "reason": "silenced",
+        "timestamp": 1769390071,
+        "last_seen": 1769390071505
+      }
+    },
+    {
+      "ts": 1769390069604,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769390069,
+        "source_type": "PIR",
+        "last_seen": 1769390069604
+      }
+    },
+    {
+      "ts": 1769390058079,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769390058,
+        "source_type": "PIR",
+        "last_seen": 1769390058079
+      }
+    },
+    {
+      "ts": 1769390044351,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "System alert",
+        "detail": "",
+        "last_seen": 1769390044351
+      }
+    },
+    {
+      "ts": 1769390043634,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769390043,
+        "source_type": "PIR",
+        "last_seen": 1769390043634
+      }
+    },
+    {
+      "ts": 1769390042146,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -57,
+        "heap_free": 172012,
+        "uptime_s": 65,
+        "reconnects": 0,
+        "fw_version": "1",
+        "timestamp": 1769390042,
+        "last_seen": 1769390042146
+      }
+    },
+    {
+      "ts": 1769390012151,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -59,
+        "heap_free": 172148,
+        "uptime_s": 35,
+        "reconnects": 0,
+        "fw_version": "1",
+        "timestamp": 1769390012,
+        "last_seen": 1769390012151
+      }
+    },
+    {
+      "ts": 1769389983693,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "System alert",
+        "detail": "",
+        "last_seen": 1769389983693
+      }
+    },
+    {
+      "ts": 1769389951873,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "System alert",
+        "detail": "",
+        "last_seen": 1769389951873
+      }
+    },
+    {
+      "ts": 1769389942641,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769389942,
+        "source_type": "PIR",
+        "last_seen": 1769389942641
+      }
+    },
+    {
+      "ts": 1769389933534,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -58,
+        "heap_free": 171856,
+        "uptime_s": 511,
+        "reconnects": 7,
+        "fw_version": "1",
+        "timestamp": 1769389933,
+        "last_seen": 1769389933534
+      }
+    },
+    {
+      "ts": 1769389930581,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769389930,
+        "source_type": "PIR",
+        "last_seen": 1769389930581
+      }
+    },
+    {
+      "ts": 1769389910554,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769389910,
+        "source_type": "PIR",
+        "last_seen": 1769389910554
+      }
+    },
+    {
+      "ts": 1769389903535,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -60,
+        "heap_free": 171856,
+        "uptime_s": 481,
+        "reconnects": 7,
+        "fw_version": "1",
+        "timestamp": 1769389903,
+        "last_seen": 1769389903535
+      }
+    },
+    {
+      "ts": 1769389897027,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769389896,
+        "source_type": "PIR",
+        "last_seen": 1769389897027
+      }
+    },
+    {
+      "ts": 1769389889524,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "System alert",
+        "detail": "",
+        "last_seen": 1769389889524
+      }
+    },
+    {
+      "ts": 1769389884017,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769389883,
+        "source_type": "PIR",
+        "last_seen": 1769389884017
+      }
+    },
+    {
+      "ts": 1769389873561,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -58,
+        "heap_free": 171872,
+        "uptime_s": 451,
+        "reconnects": 6,
+        "fw_version": "1",
+        "timestamp": 1769389873,
+        "last_seen": 1769389873561
+      }
+    },
+    {
+      "ts": 1769389864484,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769389864,
+        "source_type": "PIR",
+        "last_seen": 1769389864484
+      }
+    },
+    {
+      "ts": 1769389850952,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769389850,
+        "source_type": "PIR",
+        "last_seen": 1769389850952
+      }
+    },
+    {
+      "ts": 1769389843554,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -58,
+        "heap_free": 171872,
+        "uptime_s": 421,
+        "reconnects": 6,
+        "fw_version": "1",
+        "timestamp": 1769389843,
+        "last_seen": 1769389843554
+      }
+    },
+    {
+      "ts": 1769389838166,
+      "topic": "smartlock/cam",
+      "payload": {
+        "type": "camera",
+        "message": "Camera capture",
+        "detail": "seq 9",
+        "last_seen": 1769389838166
+      }
+    },
+    {
+      "ts": 1769389837426,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769389837,
+        "source_type": "PIR",
+        "last_seen": 1769389837426
+      }
+    },
+    {
+      "ts": 1769389826865,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "System alert",
+        "detail": "",
+        "last_seen": 1769389826865
+      }
+    },
+    {
+      "ts": 1769389825401,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769389825,
+        "source_type": "PIR",
+        "last_seen": 1769389825401
+      }
+    },
+    {
+      "ts": 1769389813604,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -55,
+        "heap_free": 168004,
+        "uptime_s": 391,
+        "reconnects": 5,
+        "fw_version": "1",
+        "timestamp": 1769389813,
+        "last_seen": 1769389813604
+      }
+    },
+    {
+      "ts": 1769389813373,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769389813,
+        "source_type": "PIR",
+        "last_seen": 1769389813373
+      }
+    },
+    {
+      "ts": 1769389802588,
+      "topic": "smartlock/cam",
+      "payload": {
+        "type": "camera",
+        "message": "Camera capture",
+        "detail": "seq 8",
+        "last_seen": 1769389802588
+      }
+    },
+    {
+      "ts": 1769389801842,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769389801,
+        "source_type": "PIR",
+        "last_seen": 1769389801842
+      }
+    },
+    {
+      "ts": 1769389789221,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769389789,
+        "source_type": "PIR",
+        "last_seen": 1769389789221
+      }
+    },
+    {
+      "ts": 1769389786056,
+      "topic": "smartlock/command_ack",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "command": "LOCK",
+        "status": "ok",
+        "reason": "locked",
+        "timestamp": 1769389785,
+        "last_seen": 1769389786056
+      }
+    },
+    {
+      "ts": 1769389786053,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "door",
+        "message": "Command lock",
+        "detail": "Command lock",
+        "timestamp": 1769389785,
+        "source_type": "LOCK",
+        "last_seen": 1769389786053
+      }
+    },
+    {
+      "ts": 1769389783554,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -56,
+        "heap_free": 171776,
+        "uptime_s": 361,
+        "reconnects": 5,
+        "fw_version": "1",
+        "timestamp": 1769389783,
+        "last_seen": 1769389783554
+      }
+    },
+    {
+      "ts": 1769389781599,
+      "topic": "smartlock/command_ack",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "command": "UNLOCK",
+        "status": "ok",
+        "reason": "unlocked",
+        "timestamp": 1769389781,
+        "last_seen": 1769389781599
+      }
+    },
+    {
+      "ts": 1769389781597,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "door",
+        "message": "Command unlock",
+        "detail": "Command unlock",
+        "timestamp": 1769389781,
+        "source_type": "UNLOCK",
+        "last_seen": 1769389781597
+      }
+    },
+    {
+      "ts": 1769389777197,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769389777,
+        "source_type": "PIR",
+        "last_seen": 1769389777197
+      }
+    },
+    {
+      "ts": 1769389764101,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "System alert",
+        "detail": "",
+        "last_seen": 1769389764101
+      }
+    },
+    {
+      "ts": 1769389763330,
+      "topic": "smartlock/cam",
+      "payload": {
+        "type": "camera",
+        "message": "Camera capture",
+        "detail": "seq 7",
+        "last_seen": 1769389763330
+      }
+    },
+    {
+      "ts": 1769389762604,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769389762,
+        "source_type": "PIR",
+        "last_seen": 1769389762604
+      }
+    },
+    {
+      "ts": 1769389753554,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -58,
+        "heap_free": 171928,
+        "uptime_s": 331,
+        "reconnects": 4,
+        "fw_version": "1",
+        "timestamp": 1769389753,
+        "last_seen": 1769389753554
+      }
+    },
+    {
+      "ts": 1769389749595,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769389749,
+        "source_type": "PIR",
+        "last_seen": 1769389749595
+      }
+    },
+    {
+      "ts": 1769389726441,
+      "topic": "smartlock/cam",
+      "payload": {
+        "type": "camera",
+        "message": "Camera capture",
+        "detail": "seq 6",
+        "last_seen": 1769389726441
+      }
+    },
+    {
+      "ts": 1769389725539,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769389725,
+        "source_type": "PIR",
+        "last_seen": 1769389725539
+      }
+    },
+    {
+      "ts": 1769389723543,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -55,
+        "heap_free": 171928,
+        "uptime_s": 301,
+        "reconnects": 4,
+        "fw_version": "1",
+        "timestamp": 1769389723,
+        "last_seen": 1769389723543
+      }
+    },
+    {
+      "ts": 1769389711513,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769389711,
+        "source_type": "PIR",
+        "last_seen": 1769389711513
+      }
+    },
+    {
+      "ts": 1769389701860,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "System alert",
+        "detail": "",
+        "last_seen": 1769389701860
+      }
+    },
+    {
+      "ts": 1769389699439,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769389699,
+        "source_type": "PIR",
+        "last_seen": 1769389699439
+      }
+    },
+    {
+      "ts": 1769389693501,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -56,
+        "heap_free": 171952,
+        "uptime_s": 271,
+        "reconnects": 3,
+        "fw_version": "1",
+        "timestamp": 1769389693,
+        "last_seen": 1769389693501
+      }
+    },
+    {
+      "ts": 1769389684627,
+      "topic": "smartlock/cam",
+      "payload": {
+        "type": "camera",
+        "message": "Camera capture",
+        "detail": "seq 5",
+        "last_seen": 1769389684627
+      }
+    },
+    {
+      "ts": 1769389683909,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769389683,
+        "source_type": "PIR",
+        "last_seen": 1769389683909
+      }
+    },
+    {
+      "ts": 1769389671378,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769389671,
+        "source_type": "PIR",
+        "last_seen": 1769389671378
+      }
+    },
+    {
+      "ts": 1769389663484,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -57,
+        "heap_free": 171952,
+        "uptime_s": 241,
+        "reconnects": 3,
+        "fw_version": "1",
+        "timestamp": 1769389663,
+        "last_seen": 1769389663484
+      }
+    },
+    {
+      "ts": 1769389658340,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769389658,
+        "source_type": "PIR",
+        "last_seen": 1769389658340
+      }
+    },
+    {
+      "ts": 1769389647036,
+      "topic": "smartlock/cam",
+      "payload": {
+        "type": "camera",
+        "message": "Camera capture",
+        "detail": "seq 4",
+        "last_seen": 1769389647036
+      }
+    },
+    {
+      "ts": 1769389646311,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769389646,
+        "source_type": "PIR",
+        "last_seen": 1769389646311
+      }
+    },
+    {
+      "ts": 1769389639855,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "System alert",
+        "detail": "",
+        "last_seen": 1769389639855
+      }
+    },
+    {
+      "ts": 1769389633565,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -55,
+        "heap_free": 170072,
+        "uptime_s": 211,
+        "reconnects": 2,
+        "fw_version": "1",
+        "timestamp": 1769389633,
+        "last_seen": 1769389633565
+      }
+    },
+    {
+      "ts": 1769389626309,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769389626,
+        "source_type": "PIR",
+        "last_seen": 1769389626309
+      }
+    },
+    {
+      "ts": 1769389612523,
+      "topic": "smartlock/cam",
+      "payload": {
+        "type": "camera",
+        "message": "Camera capture",
+        "detail": "seq 3",
+        "last_seen": 1769389612523
+      }
+    },
+    {
+      "ts": 1769389611778,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769389611,
+        "source_type": "PIR",
+        "last_seen": 1769389611778
+      }
+    },
+    {
+      "ts": 1769389603510,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -54,
+        "heap_free": 172084,
+        "uptime_s": 181,
+        "reconnects": 2,
+        "fw_version": "1",
+        "timestamp": 1769389603,
+        "last_seen": 1769389603510
+      }
+    },
+    {
+      "ts": 1769389587745,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769389587,
+        "source_type": "PIR",
+        "last_seen": 1769389587745
+      }
+    },
+    {
+      "ts": 1769389577736,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "System alert",
+        "detail": "",
+        "last_seen": 1769389577736
+      }
+    },
+    {
+      "ts": 1769389575444,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769389575,
+        "source_type": "PIR",
+        "last_seen": 1769389575444
+      }
+    },
+    {
+      "ts": 1769389574942,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Door opened while locked",
+        "detail": "Door opened while locked",
+        "timestamp": 1769389574,
+        "source_type": "FORCED_ENTRY",
+        "last_seen": 1769389574942
+      }
+    },
+    {
+      "ts": 1769389574941,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Forced entry detected",
+        "detail": "Forced entry detected",
+        "timestamp": 1769389574,
+        "source_type": "ALARM",
+        "last_seen": 1769389574941
+      }
+    },
+    {
+      "ts": 1769389574691,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "door",
+        "message": "Door opened",
+        "detail": "Door opened",
+        "timestamp": 1769389574,
+        "source_type": "REED",
+        "last_seen": 1769389574691
+      }
+    },
+    {
+      "ts": 1769389573514,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -69,
+        "heap_free": 172088,
+        "uptime_s": 151,
+        "reconnects": 1,
+        "fw_version": "1",
+        "timestamp": 1769389573,
+        "last_seen": 1769389573514
+      }
+    },
+    {
+      "ts": 1769389562875,
+      "topic": "smartlock/cam",
+      "payload": {
+        "type": "camera",
+        "message": "Camera capture",
+        "detail": "seq 2",
+        "last_seen": 1769389562875
+      }
+    },
+    {
+      "ts": 1769389562160,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769389562,
+        "source_type": "PIR",
+        "last_seen": 1769389562160
+      }
+    },
+    {
+      "ts": 1769389543508,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -57,
+        "heap_free": 172056,
+        "uptime_s": 121,
+        "reconnects": 1,
+        "fw_version": "1",
+        "timestamp": 1769389543,
+        "last_seen": 1769389543508
+      }
+    },
+    {
+      "ts": 1769389540126,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769389540,
+        "source_type": "PIR",
+        "last_seen": 1769389540126
+      }
+    },
+    {
+      "ts": 1769389525868,
+      "topic": "smartlock/cam",
+      "payload": {
+        "type": "camera",
+        "message": "Camera capture",
+        "detail": "seq 1",
+        "last_seen": 1769389525868
+      }
+    },
+    {
+      "ts": 1769389525088,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769389524,
+        "source_type": "PIR",
+        "last_seen": 1769389525088
+      }
+    },
+    {
+      "ts": 1769389515771,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "System alert",
+        "detail": "",
+        "last_seen": 1769389515771
+      }
+    },
+    {
+      "ts": 1769389513767,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -60,
+        "heap_free": 169968,
+        "uptime_s": 91,
+        "reconnects": 0,
+        "fw_version": "1",
+        "timestamp": 1769389513,
+        "last_seen": 1769389513767
+      }
+    },
+    {
+      "ts": 1769389513059,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769389512,
+        "source_type": "PIR",
+        "last_seen": 1769389513059
+      }
+    },
+    {
+      "ts": 1769389500528,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769389500,
+        "source_type": "PIR",
+        "last_seen": 1769389500528
+      }
+    },
+    {
+      "ts": 1769389489230,
+      "topic": "smartlock/cam",
+      "payload": {
+        "type": "camera",
+        "message": "Camera capture",
+        "detail": "seq 0",
+        "last_seen": 1769389489230
+      }
+    },
+    {
+      "ts": 1769389488510,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 66,
+        "source_type": "PIR",
+        "last_seen": 1769389488510
+      }
+    },
+    {
+      "ts": 1769389483567,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -59,
+        "heap_free": 172372,
+        "uptime_s": 61,
+        "reconnects": 0,
+        "fw_version": "1",
+        "timestamp": 61,
+        "last_seen": 1769389483567
+      }
+    },
+    {
+      "ts": 1769379011420,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "System alert",
+        "detail": "",
+        "last_seen": 1769379011420
+      }
+    },
+    {
+      "ts": 1769378831126,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769378831,
+        "source_type": "PIR",
+        "last_seen": 1769378831126
+      }
+    },
+    {
+      "ts": 1769378830121,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -55,
+        "heap_free": 171652,
+        "uptime_s": 1418,
+        "reconnects": 22,
+        "fw_version": "1",
+        "timestamp": 1769378830,
+        "last_seen": 1769378830121
+      }
+    },
+    {
+      "ts": 1769378816590,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769378816,
+        "source_type": "PIR",
+        "last_seen": 1769378816590
+      }
+    },
+    {
+      "ts": 1769378804060,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769378804,
+        "source_type": "PIR",
+        "last_seen": 1769378804060
+      }
+    },
+    {
+      "ts": 1769378800139,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -56,
+        "heap_free": 171652,
+        "uptime_s": 1388,
+        "reconnects": 22,
+        "fw_version": "1",
+        "timestamp": 1769378800,
+        "last_seen": 1769378800139
+      }
+    },
+    {
+      "ts": 1769378790701,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "System alert",
+        "detail": "",
+        "last_seen": 1769378790701
+      }
+    },
+    {
+      "ts": 1769378790065,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769378790,
+        "source_type": "PIR",
+        "last_seen": 1769378790065
+      }
+    },
+    {
+      "ts": 1769378770143,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -54,
+        "heap_free": 171640,
+        "uptime_s": 1358,
+        "reconnects": 21,
+        "fw_version": "1",
+        "timestamp": 1769378770,
+        "last_seen": 1769378770143
+      }
+    },
+    {
+      "ts": 1769378740143,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -53,
+        "heap_free": 171640,
+        "uptime_s": 1328,
+        "reconnects": 21,
+        "fw_version": "1",
+        "timestamp": 1769378740,
+        "last_seen": 1769378740143
+      }
+    },
+    {
+      "ts": 1769378728042,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "System alert",
+        "detail": "",
+        "last_seen": 1769378728042
+      }
+    },
+    {
+      "ts": 1769378721534,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769378721,
+        "source_type": "PIR",
+        "last_seen": 1769378721534
+      }
+    },
+    {
+      "ts": 1769378710142,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -54,
+        "heap_free": 171644,
+        "uptime_s": 1298,
+        "reconnects": 20,
+        "fw_version": "1",
+        "timestamp": 1769378710,
+        "last_seen": 1769378710142
+      }
+    },
+    {
+      "ts": 1769378706516,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769378706,
+        "source_type": "PIR",
+        "last_seen": 1769378706516
+      }
+    },
+    {
+      "ts": 1769378687966,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769378688,
+        "source_type": "PIR",
+        "last_seen": 1769378687966
+      }
+    },
+    {
+      "ts": 1769378680142,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -55,
+        "heap_free": 171644,
+        "uptime_s": 1268,
+        "reconnects": 20,
+        "fw_version": "1",
+        "timestamp": 1769378680,
+        "last_seen": 1769378680142
+      }
+    },
+    {
+      "ts": 1769378668432,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769378668,
+        "source_type": "PIR",
+        "last_seen": 1769378668432
+      }
+    },
+    {
+      "ts": 1769378666213,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "System alert",
+        "detail": "",
+        "last_seen": 1769378666213
+      }
+    },
+    {
+      "ts": 1769378655905,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769378656,
+        "source_type": "PIR",
+        "last_seen": 1769378655905
+      }
+    },
+    {
+      "ts": 1769378650154,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -54,
+        "heap_free": 171648,
+        "uptime_s": 1238,
+        "reconnects": 19,
+        "fw_version": "1",
+        "timestamp": 1769378650,
+        "last_seen": 1769378650154
+      }
+    },
+    {
+      "ts": 1769378643364,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769378643,
+        "source_type": "PIR",
+        "last_seen": 1769378643364
+      }
+    },
+    {
+      "ts": 1769378631325,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769378631,
+        "source_type": "PIR",
+        "last_seen": 1769378631325
+      }
+    },
+    {
+      "ts": 1769378620128,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -54,
+        "heap_free": 171648,
+        "uptime_s": 1208,
+        "reconnects": 19,
+        "fw_version": "1",
+        "timestamp": 1769378620,
+        "last_seen": 1769378620128
+      }
+    },
+    {
+      "ts": 1769378618294,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769378618,
+        "source_type": "PIR",
+        "last_seen": 1769378618294
+      }
+    },
+    {
+      "ts": 1769378603676,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "System alert",
+        "detail": "",
+        "last_seen": 1769378603676
+      }
+    },
+    {
+      "ts": 1769378590135,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -55,
+        "heap_free": 171668,
+        "uptime_s": 1178,
+        "reconnects": 18,
+        "fw_version": "1",
+        "timestamp": 1769378590,
+        "last_seen": 1769378590135
+      }
+    },
+    {
+      "ts": 1769378585283,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769378585,
+        "source_type": "PIR",
+        "last_seen": 1769378585283
+      }
+    },
+    {
+      "ts": 1769378573252,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769378573,
+        "source_type": "PIR",
+        "last_seen": 1769378573252
+      }
+    },
+    {
+      "ts": 1769378560718,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769378561,
+        "source_type": "PIR",
+        "last_seen": 1769378560718
+      }
+    },
+    {
+      "ts": 1769378560143,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -56,
+        "heap_free": 171668,
+        "uptime_s": 1148,
+        "reconnects": 18,
+        "fw_version": "1",
+        "timestamp": 1769378560,
+        "last_seen": 1769378560143
+      }
+    },
+    {
+      "ts": 1769378546537,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769378546,
+        "source_type": "PIR",
+        "last_seen": 1769378546537
+      }
+    },
+    {
+      "ts": 1769378542312,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "System alert",
+        "detail": "",
+        "last_seen": 1769378542312
+      }
+    },
+    {
+      "ts": 1769378538714,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769378534,
+        "source_type": "PIR",
+        "last_seen": 1769378538714
+      }
+    },
+    {
+      "ts": 1769378532779,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -55,
+        "heap_free": 171556,
+        "uptime_s": 1118,
+        "reconnects": 17,
+        "fw_version": "1",
+        "timestamp": 1769378530,
+        "last_seen": 1769378532779
+      }
+    },
+    {
+      "ts": 1769378522633,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769378522,
+        "source_type": "PIR",
+        "last_seen": 1769378522633
+      }
+    },
+    {
+      "ts": 1769378510606,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769378510,
+        "source_type": "PIR",
+        "last_seen": 1769378510606
+      }
+    },
+    {
+      "ts": 1769378501002,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -55,
+        "heap_free": 171632,
+        "uptime_s": 1088,
+        "reconnects": 17,
+        "fw_version": "1",
+        "timestamp": 1769378500,
+        "last_seen": 1769378501002
+      }
+    },
+    {
+      "ts": 1769378498181,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769378498,
+        "source_type": "PIR",
+        "last_seen": 1769378498181
+      }
+    },
+    {
+      "ts": 1769378486065,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769378486,
+        "source_type": "PIR",
+        "last_seen": 1769378486065
+      }
+    },
+    {
+      "ts": 1769378482350,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "System alert",
+        "detail": "",
+        "last_seen": 1769378482350
+      }
+    },
+    {
+      "ts": 1769378470143,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -55,
+        "heap_free": 171640,
+        "uptime_s": 1058,
+        "reconnects": 16,
+        "fw_version": "1",
+        "timestamp": 1769378470,
+        "last_seen": 1769378470143
+      }
+    },
+    {
+      "ts": 1769378452007,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769378452,
+        "source_type": "PIR",
+        "last_seen": 1769378452007
+      }
+    },
+    {
+      "ts": 1769378440131,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -54,
+        "heap_free": 171828,
+        "uptime_s": 1028,
+        "reconnects": 16,
+        "fw_version": "1",
+        "timestamp": 1769378440,
+        "last_seen": 1769378440131
+      }
+    },
+    {
+      "ts": 1769378433977,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769378434,
+        "source_type": "PIR",
+        "last_seen": 1769378433977
+      }
+    },
+    {
+      "ts": 1769378418937,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769378416,
+        "source_type": "PIR",
+        "last_seen": 1769378418937
+      }
+    },
+    {
+      "ts": 1769378416632,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "System alert",
+        "detail": "",
+        "last_seen": 1769378416632
+      }
+    },
+    {
+      "ts": 1769378416438,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769378416,
+        "source_type": "PIR",
+        "last_seen": 1769378416438
+      }
+    },
+    {
+      "ts": 1769378410127,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -54,
+        "heap_free": 171796,
+        "uptime_s": 998,
+        "reconnects": 15,
+        "fw_version": "1",
+        "timestamp": 1769378410,
+        "last_seen": 1769378410127
+      }
+    },
+    {
+      "ts": 1769378399964,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769378400,
+        "source_type": "PIR",
+        "last_seen": 1769378399964
+      }
+    },
+    {
+      "ts": 1769378387878,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769378388,
+        "source_type": "PIR",
+        "last_seen": 1769378387878
+      }
+    },
+    {
+      "ts": 1769378380100,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -53,
+        "heap_free": 171796,
+        "uptime_s": 968,
+        "reconnects": 15,
+        "fw_version": "1",
+        "timestamp": 1769378380,
+        "last_seen": 1769378380100
+      }
+    },
+    {
+      "ts": 1769378370849,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769378371,
+        "source_type": "PIR",
+        "last_seen": 1769378370849
+      }
+    },
+    {
+      "ts": 1769378358817,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769378359,
+        "source_type": "PIR",
+        "last_seen": 1769378358817
+      }
+    },
+    {
+      "ts": 1769378354585,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "System alert",
+        "detail": "",
+        "last_seen": 1769378354585
+      }
+    },
+    {
+      "ts": 1769378350096,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -53,
+        "heap_free": 171832,
+        "uptime_s": 938,
+        "reconnects": 14,
+        "fw_version": "1",
+        "timestamp": 1769378350,
+        "last_seen": 1769378350096
+      }
+    },
+    {
+      "ts": 1769378345289,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769378345,
+        "source_type": "PIR",
+        "last_seen": 1769378345289
+      }
+    },
+    {
+      "ts": 1769378330264,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769378330,
+        "source_type": "PIR",
+        "last_seen": 1769378330264
+      }
+    },
+    {
+      "ts": 1769378320086,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -54,
+        "heap_free": 171832,
+        "uptime_s": 908,
+        "reconnects": 14,
+        "fw_version": "1",
+        "timestamp": 1769378320,
+        "last_seen": 1769378320086
+      }
+    },
+    {
+      "ts": 1769378316736,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769378317,
+        "source_type": "PIR",
+        "last_seen": 1769378316736
+      }
+    },
+    {
+      "ts": 1769378304714,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769378305,
+        "source_type": "PIR",
+        "last_seen": 1769378304714
+      }
+    },
+    {
+      "ts": 1769378292043,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "System alert",
+        "detail": "",
+        "last_seen": 1769378292043
+      }
+    },
+    {
+      "ts": 1769378290642,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769378290,
+        "source_type": "PIR",
+        "last_seen": 1769378290642
+      }
+    },
+    {
+      "ts": 1769378290049,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -55,
+        "heap_free": 171848,
+        "uptime_s": 878,
+        "reconnects": 13,
+        "fw_version": "1",
+        "timestamp": 1769378290,
+        "last_seen": 1769378290049
+      }
+    },
+    {
+      "ts": 1769378276604,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769378276,
+        "source_type": "PIR",
+        "last_seen": 1769378276604
+      }
+    },
+    {
+      "ts": 1769378262072,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769378262,
+        "source_type": "PIR",
+        "last_seen": 1769378262072
+      }
+    },
+    {
+      "ts": 1769378260037,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -57,
+        "heap_free": 171820,
+        "uptime_s": 848,
+        "reconnects": 13,
+        "fw_version": "1",
+        "timestamp": 1769378260,
+        "last_seen": 1769378260037
+      }
+    },
+    {
+      "ts": 1769378250045,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769378250,
+        "source_type": "PIR",
+        "last_seen": 1769378250045
+      }
+    },
+    {
+      "ts": 1769378229838,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "System alert",
+        "detail": "",
+        "last_seen": 1769378229838
+      }
+    },
+    {
+      "ts": 1769378200069,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -55,
+        "heap_free": 171836,
+        "uptime_s": 788,
+        "reconnects": 12,
+        "fw_version": "1",
+        "timestamp": 1769378200,
+        "last_seen": 1769378200069
+      }
+    },
+    {
+      "ts": 1769378170202,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -56,
+        "heap_free": 169872,
+        "uptime_s": 758,
+        "reconnects": 12,
+        "fw_version": "1",
+        "timestamp": 1769378170,
+        "last_seen": 1769378170202
+      }
+    },
+    {
+      "ts": 1769378167886,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "System alert",
+        "detail": "",
+        "last_seen": 1769378167886
+      }
+    },
+    {
+      "ts": 1769378147515,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769378147,
+        "source_type": "PIR",
+        "last_seen": 1769378147515
+      }
+    },
+    {
+      "ts": 1769378140021,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -57,
+        "heap_free": 171816,
+        "uptime_s": 728,
+        "reconnects": 11,
+        "fw_version": "1",
+        "timestamp": 1769378140,
+        "last_seen": 1769378140021
+      }
+    },
+    {
+      "ts": 1769378136535,
+      "topic": "smartlock/command_ack",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "command": "LOCK",
+        "status": "ok",
+        "reason": "locked",
+        "timestamp": 1769378136,
+        "last_seen": 1769378136535
+      }
+    },
+    {
+      "ts": 1769378136534,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "door",
+        "message": "Command lock",
+        "detail": "Command lock",
+        "timestamp": 1769378136,
+        "source_type": "LOCK",
+        "last_seen": 1769378136534
+      }
+    },
+    {
+      "ts": 1769378135487,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769378135,
+        "source_type": "PIR",
+        "last_seen": 1769378135487
+      }
+    },
+    {
+      "ts": 1769378132488,
+      "topic": "smartlock/command_ack",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "command": "UNLOCK",
+        "status": "ok",
+        "reason": "unlocked",
+        "timestamp": 1769378132,
+        "last_seen": 1769378132488
+      }
+    },
+    {
+      "ts": 1769378132487,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "door",
+        "message": "Command unlock",
+        "detail": "Command unlock",
+        "timestamp": 1769378132,
+        "source_type": "UNLOCK",
+        "last_seen": 1769378132487
+      }
+    },
+    {
+      "ts": 1769378111458,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769378111,
+        "source_type": "PIR",
+        "last_seen": 1769378111458
+      }
+    },
+    {
+      "ts": 1769378110016,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -55,
+        "heap_free": 171816,
+        "uptime_s": 698,
+        "reconnects": 11,
+        "fw_version": "1",
+        "timestamp": 1769378110,
+        "last_seen": 1769378110016
+      }
+    },
+    {
+      "ts": 1769378105730,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "System alert",
+        "detail": "",
+        "last_seen": 1769378105730
+      }
+    },
+    {
+      "ts": 1769378082207,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -57,
+        "heap_free": 171736,
+        "uptime_s": 668,
+        "reconnects": 10,
+        "fw_version": "1",
+        "timestamp": 1769378080,
+        "last_seen": 1769378082207
+      }
+    },
+    {
+      "ts": 1769378079606,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "PIR motion",
+        "detail": "PIR motion",
+        "timestamp": 1769378079,
+        "source_type": "CAM_CAPTURE",
+        "last_seen": 1769378079606
+      }
+    },
+    {
+      "ts": 1769378079393,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769378079,
+        "source_type": "PIR",
+        "last_seen": 1769378079393
+      }
+    },
+    {
+      "ts": 1769378050003,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -56,
+        "heap_free": 171812,
+        "uptime_s": 638,
+        "reconnects": 10,
+        "fw_version": "1",
+        "timestamp": 1769378050,
+        "last_seen": 1769378050003
+      }
+    },
+    {
+      "ts": 1769378043722,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "ALERT",
+        "detail": "",
+        "last_seen": 1769378043722
+      }
+    },
+    {
+      "ts": 1769378030969,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "PIR motion",
+        "detail": "PIR motion",
+        "timestamp": 1769378030,
+        "source_type": "CAM_CAPTURE",
+        "last_seen": 1769378030969
+      }
+    },
+    {
+      "ts": 1769378030392,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769378030,
+        "source_type": "PIR",
+        "last_seen": 1769378030392
+      }
+    },
+    {
+      "ts": 1769378020045,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -56,
+        "heap_free": 171836,
+        "uptime_s": 608,
+        "reconnects": 9,
+        "fw_version": "1",
+        "timestamp": 1769378020,
+        "last_seen": 1769378020045
+      }
+    },
+    {
+      "ts": 1769378014087,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "PIR motion",
+        "detail": "PIR motion",
+        "timestamp": 1769378014,
+        "source_type": "CAM_CAPTURE",
+        "last_seen": 1769378014087
+      }
+    },
+    {
+      "ts": 1769378013862,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769378014,
+        "source_type": "PIR",
+        "last_seen": 1769378013862
+      }
+    },
+    {
+      "ts": 1769378000023,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "PIR motion",
+        "detail": "PIR motion",
+        "timestamp": 1769377999,
+        "source_type": "CAM_CAPTURE",
+        "last_seen": 1769378000023
+      }
+    },
+    {
+      "ts": 1769377999805,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769377999,
+        "source_type": "PIR",
+        "last_seen": 1769377999805
+      }
+    },
+    {
+      "ts": 1769377990022,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -56,
+        "heap_free": 171840,
+        "uptime_s": 578,
+        "reconnects": 9,
+        "fw_version": "1",
+        "timestamp": 1769377990,
+        "last_seen": 1769377990022
+      }
+    },
+    {
+      "ts": 1769377985000,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "PIR motion",
+        "detail": "PIR motion",
+        "timestamp": 1769377985,
+        "source_type": "CAM_CAPTURE",
+        "last_seen": 1769377985000
+      }
+    },
+    {
+      "ts": 1769377984778,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769377985,
+        "source_type": "PIR",
+        "last_seen": 1769377984778
+      }
+    },
+    {
+      "ts": 1769377980972,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "ALERT",
+        "detail": "",
+        "last_seen": 1769377980972
+      }
+    },
+    {
+      "ts": 1769377972938,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "PIR motion",
+        "detail": "PIR motion",
+        "timestamp": 1769377973,
+        "source_type": "CAM_CAPTURE",
+        "last_seen": 1769377972938
+      }
+    },
+    {
+      "ts": 1769377972722,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769377973,
+        "source_type": "PIR",
+        "last_seen": 1769377972722
+      }
+    },
+    {
+      "ts": 1769377960908,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "PIR motion",
+        "detail": "PIR motion",
+        "timestamp": 1769377961,
+        "source_type": "CAM_CAPTURE",
+        "last_seen": 1769377960908
+      }
+    },
+    {
+      "ts": 1769377960687,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769377961,
+        "source_type": "PIR",
+        "last_seen": 1769377960687
+      }
+    },
+    {
+      "ts": 1769377959981,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -54,
+        "heap_free": 171828,
+        "uptime_s": 548,
+        "reconnects": 8,
+        "fw_version": "1",
+        "timestamp": 1769377960,
+        "last_seen": 1769377959981
+      }
+    },
+    {
+      "ts": 1769377941877,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "PIR motion",
+        "detail": "PIR motion",
+        "timestamp": 1769377942,
+        "source_type": "CAM_CAPTURE",
+        "last_seen": 1769377941877
+      }
+    },
+    {
+      "ts": 1769377941663,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769377942,
+        "source_type": "PIR",
+        "last_seen": 1769377941663
+      }
+    },
+    {
+      "ts": 1769377929980,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -55,
+        "heap_free": 171828,
+        "uptime_s": 518,
+        "reconnects": 8,
+        "fw_version": "1",
+        "timestamp": 1769377930,
+        "last_seen": 1769377929980
+      }
+    },
+    {
+      "ts": 1769377925387,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "PIR motion",
+        "detail": "PIR motion",
+        "timestamp": 1769377925,
+        "source_type": "CAM_CAPTURE",
+        "last_seen": 1769377925387
+      }
+    },
+    {
+      "ts": 1769377925143,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769377925,
+        "source_type": "PIR",
+        "last_seen": 1769377925143
+      }
+    },
+    {
+      "ts": 1769377918491,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "ALERT",
+        "detail": "",
+        "last_seen": 1769377918491
+      }
+    },
+    {
+      "ts": 1769377903354,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "PIR motion",
+        "detail": "PIR motion",
+        "timestamp": 1769377903,
+        "source_type": "CAM_CAPTURE",
+        "last_seen": 1769377903354
+      }
+    },
+    {
+      "ts": 1769377903140,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769377903,
+        "source_type": "PIR",
+        "last_seen": 1769377903140
+      }
+    },
+    {
+      "ts": 1769377900010,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -55,
+        "heap_free": 171832,
+        "uptime_s": 488,
+        "reconnects": 7,
+        "fw_version": "1",
+        "timestamp": 1769377900,
+        "last_seen": 1769377900010
+      }
+    },
+    {
+      "ts": 1769377891324,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "PIR motion",
+        "detail": "PIR motion",
+        "timestamp": 1769377891,
+        "source_type": "CAM_CAPTURE",
+        "last_seen": 1769377891324
+      }
+    },
+    {
+      "ts": 1769377891108,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769377891,
+        "source_type": "PIR",
+        "last_seen": 1769377891108
+      }
+    },
+    {
+      "ts": 1769377873293,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "PIR motion",
+        "detail": "PIR motion",
+        "timestamp": 1769377873,
+        "source_type": "CAM_CAPTURE",
+        "last_seen": 1769377873293
+      }
+    },
+    {
+      "ts": 1769377873070,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769377873,
+        "source_type": "PIR",
+        "last_seen": 1769377873070
+      }
+    },
+    {
+      "ts": 1769377870010,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -57,
+        "heap_free": 171832,
+        "uptime_s": 458,
+        "reconnects": 7,
+        "fw_version": "1",
+        "timestamp": 1769377870,
+        "last_seen": 1769377870010
+      }
+    },
+    {
+      "ts": 1769377861265,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "PIR motion",
+        "detail": "PIR motion",
+        "timestamp": 1769377861,
+        "source_type": "CAM_CAPTURE",
+        "last_seen": 1769377861265
+      }
+    },
+    {
+      "ts": 1769377861031,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769377861,
+        "source_type": "PIR",
+        "last_seen": 1769377861031
+      }
+    },
+    {
+      "ts": 1769377855815,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "ALERT",
+        "detail": "",
+        "last_seen": 1769377855815
+      }
+    },
+    {
+      "ts": 1769377844713,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "PIR motion",
+        "detail": "PIR motion",
+        "timestamp": 1769377844,
+        "source_type": "CAM_CAPTURE",
+        "last_seen": 1769377844713
+      }
+    },
+    {
+      "ts": 1769377844493,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769377844,
+        "source_type": "PIR",
+        "last_seen": 1769377844493
+      }
+    },
+    {
+      "ts": 1769377840001,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -58,
+        "heap_free": 171828,
+        "uptime_s": 428,
+        "reconnects": 6,
+        "fw_version": "1",
+        "timestamp": 1769377840,
+        "last_seen": 1769377840001
+      }
+    },
+    {
+      "ts": 1769377833725,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "door",
+        "message": "Keypad lock",
+        "detail": "Keypad lock",
+        "timestamp": 1769377833,
+        "source_type": "LOCK",
+        "last_seen": 1769377833725
+      }
+    },
+    {
+      "ts": 1769377830351,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "PIR motion",
+        "detail": "PIR motion",
+        "timestamp": 1769377830,
+        "source_type": "CAM_CAPTURE",
+        "last_seen": 1769377830351
+      }
+    },
+    {
+      "ts": 1769377830134,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769377830,
+        "source_type": "PIR",
+        "last_seen": 1769377830134
+      }
+    },
+    {
+      "ts": 1769377826144,
+      "topic": "smartlock/command_ack",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "command": "UNLOCK",
+        "status": "ok",
+        "reason": "unlocked",
+        "timestamp": 1769377826,
+        "last_seen": 1769377826144
+      }
+    },
+    {
+      "ts": 1769377826142,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "door",
+        "message": "Command unlock",
+        "detail": "Command unlock",
+        "timestamp": 1769377826,
+        "source_type": "UNLOCK",
+        "last_seen": 1769377826142
+      }
+    },
+    {
+      "ts": 1769377822583,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "door",
+        "message": "Auto-lock",
+        "detail": "Auto-lock",
+        "timestamp": 1769377822,
+        "source_type": "LOCK",
+        "last_seen": 1769377822583
+      }
+    },
+    {
+      "ts": 1769377817820,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "PIR motion",
+        "detail": "PIR motion",
+        "timestamp": 1769377817,
+        "source_type": "CAM_CAPTURE",
+        "last_seen": 1769377817820
+      }
+    },
+    {
+      "ts": 1769377817606,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769377817,
+        "source_type": "PIR",
+        "last_seen": 1769377817606
+      }
+    },
+    {
+      "ts": 1769377812247,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "door",
+        "message": "Command unlock",
+        "detail": "Command unlock",
+        "timestamp": 1769377812,
+        "source_type": "UNLOCK",
+        "last_seen": 1769377812247
+      }
+    },
+    {
+      "ts": 1769377812246,
+      "topic": "smartlock/command_ack",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "command": "UNLOCK",
+        "status": "ok",
+        "reason": "unlocked",
+        "timestamp": 1769377812,
+        "last_seen": 1769377812246
+      }
+    },
+    {
+      "ts": 1769377809994,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -56,
+        "heap_free": 171828,
+        "uptime_s": 398,
+        "reconnects": 6,
+        "fw_version": "1",
+        "timestamp": 1769377810,
+        "last_seen": 1769377809994
+      }
+    },
+    {
+      "ts": 1769377808251,
+      "topic": "smartlock/command_ack",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "command": "MODE_HOME",
+        "status": "ok",
+        "reason": "mode_home",
+        "timestamp": 1769377808,
+        "last_seen": 1769377808251
+      }
+    },
+    {
+      "ts": 1769377805804,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion while away",
+        "detail": "Motion while away",
+        "timestamp": 1769377805,
+        "source_type": "ALARM",
+        "last_seen": 1769377805804
+      }
+    },
+    {
+      "ts": 1769377805798,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "PIR motion",
+        "detail": "PIR motion",
+        "timestamp": 1769377805,
+        "source_type": "CAM_CAPTURE",
+        "last_seen": 1769377805798
+      }
+    },
+    {
+      "ts": 1769377805580,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769377805,
+        "source_type": "PIR",
+        "last_seen": 1769377805580
+      }
+    },
+    {
+      "ts": 1769377803247,
+      "topic": "smartlock/command_ack",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "command": "MODE_AWAY",
+        "status": "ok",
+        "reason": "mode_away",
+        "timestamp": 1769377803,
+        "last_seen": 1769377803247
+      }
+    },
+    {
+      "ts": 1769377793438,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "ALERT",
+        "detail": "",
+        "last_seen": 1769377793438
+      }
+    },
+    {
+      "ts": 1769377792239,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "PIR motion",
+        "detail": "PIR motion",
+        "timestamp": 1769377792,
+        "source_type": "CAM_CAPTURE",
+        "last_seen": 1769377792239
+      }
+    },
+    {
+      "ts": 1769377792027,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769377792,
+        "source_type": "PIR",
+        "last_seen": 1769377792027
+      }
+    },
+    {
+      "ts": 1769377779979,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -56,
+        "heap_free": 172048,
+        "uptime_s": 368,
+        "reconnects": 5,
+        "fw_version": "1",
+        "timestamp": 1769377780,
+        "last_seen": 1769377779979
+      }
+    },
+    {
+      "ts": 1769377776710,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "PIR motion",
+        "detail": "PIR motion",
+        "timestamp": 1769377776,
+        "source_type": "CAM_CAPTURE",
+        "last_seen": 1769377776710
+      }
+    },
+    {
+      "ts": 1769377776498,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769377776,
+        "source_type": "PIR",
+        "last_seen": 1769377776498
+      }
+    },
+    {
+      "ts": 1769377764678,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "PIR motion",
+        "detail": "PIR motion",
+        "timestamp": 1769377764,
+        "source_type": "CAM_CAPTURE",
+        "last_seen": 1769377764678
+      }
+    },
+    {
+      "ts": 1769377764465,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769377764,
+        "source_type": "PIR",
+        "last_seen": 1769377764465
+      }
+    },
+    {
+      "ts": 1769377752150,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "PIR motion",
+        "detail": "PIR motion",
+        "timestamp": 1769377752,
+        "source_type": "CAM_CAPTURE",
+        "last_seen": 1769377752150
+      }
+    },
+    {
+      "ts": 1769377751937,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769377752,
+        "source_type": "PIR",
+        "last_seen": 1769377751937
+      }
+    },
+    {
+      "ts": 1769377749968,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -54,
+        "heap_free": 172048,
+        "uptime_s": 338,
+        "reconnects": 5,
+        "fw_version": "1",
+        "timestamp": 1769377750,
+        "last_seen": 1769377749968
+      }
+    },
+    {
+      "ts": 1769377738618,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "PIR motion",
+        "detail": "PIR motion",
+        "timestamp": 1769377738,
+        "source_type": "CAM_CAPTURE",
+        "last_seen": 1769377738618
+      }
+    },
+    {
+      "ts": 1769377738404,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769377738,
+        "source_type": "PIR",
+        "last_seen": 1769377738404
+      }
+    },
+    {
+      "ts": 1769377730979,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "ALERT",
+        "detail": "",
+        "last_seen": 1769377730979
+      }
+    },
+    {
+      "ts": 1769377726702,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "PIR motion",
+        "detail": "PIR motion",
+        "timestamp": 1769377726,
+        "source_type": "CAM_CAPTURE",
+        "last_seen": 1769377726702
+      }
+    },
+    {
+      "ts": 1769377726404,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769377726,
+        "source_type": "PIR",
+        "last_seen": 1769377726404
+      }
+    },
+    {
+      "ts": 1769377719995,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -52,
+        "heap_free": 172056,
+        "uptime_s": 308,
+        "reconnects": 4,
+        "fw_version": "1",
+        "timestamp": 1769377720,
+        "last_seen": 1769377719995
+      }
+    },
+    {
+      "ts": 1769377713591,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "PIR motion",
+        "detail": "PIR motion",
+        "timestamp": 1769377713,
+        "source_type": "CAM_CAPTURE",
+        "last_seen": 1769377713591
+      }
+    },
+    {
+      "ts": 1769377713376,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769377713,
+        "source_type": "PIR",
+        "last_seen": 1769377713376
+      }
+    },
+    {
+      "ts": 1769377700855,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "PIR motion",
+        "detail": "PIR motion",
+        "timestamp": 1769377699,
+        "source_type": "CAM_CAPTURE",
+        "last_seen": 1769377700855
+      }
+    },
+    {
+      "ts": 1769377699346,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769377699,
+        "source_type": "PIR",
+        "last_seen": 1769377699346
+      }
+    },
+    {
+      "ts": 1769377689986,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -54,
+        "heap_free": 172060,
+        "uptime_s": 278,
+        "reconnects": 4,
+        "fw_version": "1",
+        "timestamp": 1769377690,
+        "last_seen": 1769377689986
+      }
+    },
+    {
+      "ts": 1769377686036,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "PIR motion",
+        "detail": "PIR motion",
+        "timestamp": 1769377686,
+        "source_type": "CAM_CAPTURE",
+        "last_seen": 1769377686036
+      }
+    },
+    {
+      "ts": 1769377685818,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769377686,
+        "source_type": "PIR",
+        "last_seen": 1769377685818
+      }
+    },
+    {
+      "ts": 1769377673007,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "PIR motion",
+        "detail": "PIR motion",
+        "timestamp": 1769377673,
+        "source_type": "CAM_CAPTURE",
+        "last_seen": 1769377673007
+      }
+    },
+    {
+      "ts": 1769377672785,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769377673,
+        "source_type": "PIR",
+        "last_seen": 1769377672785
+      }
+    },
+    {
+      "ts": 1769377668582,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "ALERT",
+        "detail": "",
+        "last_seen": 1769377668582
+      }
+    },
+    {
+      "ts": 1769377659989,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -56,
+        "heap_free": 172044,
+        "uptime_s": 248,
+        "reconnects": 3,
+        "fw_version": "1",
+        "timestamp": 1769377660,
+        "last_seen": 1769377659989
+      }
+    },
+    {
+      "ts": 1769377657928,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "PIR motion",
+        "detail": "PIR motion",
+        "timestamp": 1769377657,
+        "source_type": "CAM_CAPTURE",
+        "last_seen": 1769377657928
+      }
+    },
+    {
+      "ts": 1769377657294,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769377657,
+        "source_type": "PIR",
+        "last_seen": 1769377657294
+      }
+    },
+    {
+      "ts": 1769377644482,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "PIR motion",
+        "detail": "PIR motion",
+        "timestamp": 1769377644,
+        "source_type": "CAM_CAPTURE",
+        "last_seen": 1769377644482
+      }
+    },
+    {
+      "ts": 1769377644240,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769377644,
+        "source_type": "PIR",
+        "last_seen": 1769377644240
+      }
+    },
+    {
+      "ts": 1769377629978,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -57,
+        "heap_free": 172044,
+        "uptime_s": 218,
+        "reconnects": 3,
+        "fw_version": "1",
+        "timestamp": 1769377630,
+        "last_seen": 1769377629978
+      }
+    },
+    {
+      "ts": 1769377612434,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "PIR motion",
+        "detail": "PIR motion",
+        "timestamp": 1769377612,
+        "source_type": "CAM_CAPTURE",
+        "last_seen": 1769377612434
+      }
+    },
+    {
+      "ts": 1769377612203,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769377612,
+        "source_type": "PIR",
+        "last_seen": 1769377612203
+      }
+    },
+    {
+      "ts": 1769377606483,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "ALERT",
+        "detail": "",
+        "last_seen": 1769377606483
+      }
+    },
+    {
+      "ts": 1769377599955,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -54,
+        "heap_free": 172048,
+        "uptime_s": 188,
+        "reconnects": 2,
+        "fw_version": "1",
+        "timestamp": 1769377600,
+        "last_seen": 1769377599955
+      }
+    },
+    {
+      "ts": 1769377588899,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "PIR motion",
+        "detail": "PIR motion",
+        "timestamp": 1769377588,
+        "source_type": "CAM_CAPTURE",
+        "last_seen": 1769377588899
+      }
+    },
+    {
+      "ts": 1769377588673,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769377588,
+        "source_type": "PIR",
+        "last_seen": 1769377588673
+      }
+    },
+    {
+      "ts": 1769377576348,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "PIR motion",
+        "detail": "PIR motion",
+        "timestamp": 1769377576,
+        "source_type": "CAM_CAPTURE",
+        "last_seen": 1769377576348
+      }
+    },
+    {
+      "ts": 1769377576132,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769377576,
+        "source_type": "PIR",
+        "last_seen": 1769377576132
+      }
+    },
+    {
+      "ts": 1769377569959,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -56,
+        "heap_free": 172048,
+        "uptime_s": 158,
+        "reconnects": 2,
+        "fw_version": "1",
+        "timestamp": 1769377570,
+        "last_seen": 1769377569959
+      }
+    },
+    {
+      "ts": 1769377555852,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "PIR motion",
+        "detail": "PIR motion",
+        "timestamp": 1769377555,
+        "source_type": "CAM_CAPTURE",
+        "last_seen": 1769377555852
+      }
+    },
+    {
+      "ts": 1769377555609,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769377555,
+        "source_type": "PIR",
+        "last_seen": 1769377555609
+      }
+    },
+    {
+      "ts": 1769377544192,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "ALERT",
+        "detail": "",
+        "last_seen": 1769377544192
+      }
+    },
+    {
+      "ts": 1769377540259,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -57,
+        "heap_free": 169916,
+        "uptime_s": 128,
+        "reconnects": 1,
+        "fw_version": "1",
+        "timestamp": 1769377540,
+        "last_seen": 1769377540259
+      }
+    },
+    {
+      "ts": 1769377539773,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "PIR motion",
+        "detail": "PIR motion",
+        "timestamp": 1769377539,
+        "source_type": "CAM_CAPTURE",
+        "last_seen": 1769377539773
+      }
+    },
+    {
+      "ts": 1769377539557,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769377539,
+        "source_type": "PIR",
+        "last_seen": 1769377539557
+      }
+    },
+    {
+      "ts": 1769377521746,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "PIR motion",
+        "detail": "PIR motion",
+        "timestamp": 1769377521,
+        "source_type": "CAM_CAPTURE",
+        "last_seen": 1769377521746
+      }
+    },
+    {
+      "ts": 1769377521526,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769377521,
+        "source_type": "PIR",
+        "last_seen": 1769377521526
+      }
+    },
+    {
+      "ts": 1769377509931,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -56,
+        "heap_free": 172028,
+        "uptime_s": 98,
+        "reconnects": 1,
+        "fw_version": "1",
+        "timestamp": 1769377510,
+        "last_seen": 1769377509931
+      }
+    },
+    {
+      "ts": 1769377505704,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "PIR motion",
+        "detail": "PIR motion",
+        "timestamp": 1769377505,
+        "source_type": "CAM_CAPTURE",
+        "last_seen": 1769377505704
+      }
+    },
+    {
+      "ts": 1769377505491,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769377505,
+        "source_type": "PIR",
+        "last_seen": 1769377505491
+      }
+    },
+    {
+      "ts": 1769377493681,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "PIR motion",
+        "detail": "PIR motion",
+        "timestamp": 1769377493,
+        "source_type": "CAM_CAPTURE",
+        "last_seen": 1769377493681
+      }
+    },
+    {
+      "ts": 1769377493463,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769377493,
+        "source_type": "PIR",
+        "last_seen": 1769377493463
+      }
+    },
+    {
+      "ts": 1769377481696,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "ALERT",
+        "detail": "",
+        "last_seen": 1769377481696
+      }
+    },
+    {
+      "ts": 1769377479927,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -56,
+        "heap_free": 172068,
+        "uptime_s": 68,
+        "reconnects": 0,
+        "fw_version": "1",
+        "timestamp": 1769377480,
+        "last_seen": 1769377479927
+      }
+    },
+    {
+      "ts": 1769377475931,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "PIR motion",
+        "detail": "PIR motion",
+        "timestamp": 1769377475,
+        "source_type": "CAM_CAPTURE",
+        "last_seen": 1769377475931
+      }
+    },
+    {
+      "ts": 1769377475434,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769377475,
+        "source_type": "PIR",
+        "last_seen": 1769377475434
+      }
+    },
+    {
+      "ts": 1769377449922,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -60,
+        "heap_free": 172312,
+        "uptime_s": 38,
+        "reconnects": 0,
+        "fw_version": "1",
+        "timestamp": 1769377450,
+        "last_seen": 1769377449922
+      }
+    },
+    {
+      "ts": 1769377421370,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "ALERT",
+        "detail": "",
+        "last_seen": 1769377421370
+      }
+    },
+    {
+      "ts": 1769377389616,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -59,
+        "heap_free": 172332,
+        "uptime_s": 37,
+        "reconnects": 0,
+        "fw_version": "1",
+        "timestamp": 1769377389,
+        "last_seen": 1769377389616
+      }
+    },
+    {
+      "ts": 1769377361168,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "ALERT",
+        "detail": "",
+        "last_seen": 1769377361168
+      }
+    },
+    {
+      "ts": 1769377330667,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769377328,
+        "source_type": "PIR",
+        "last_seen": 1769377330667
+      }
+    },
+    {
+      "ts": 1769377325950,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "ALERT",
+        "detail": "",
+        "last_seen": 1769377325950
+      }
+    },
+    {
+      "ts": 1769377318718,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -61,
+        "heap_free": 171804,
+        "uptime_s": 996,
+        "reconnects": 15,
+        "fw_version": "1",
+        "timestamp": 1769377319,
+        "last_seen": 1769377318718
+      }
+    },
+    {
+      "ts": 1769377314676,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769377314,
+        "source_type": "PIR",
+        "last_seen": 1769377314676
+      }
+    },
+    {
+      "ts": 1769377294673,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769377294,
+        "source_type": "PIR",
+        "last_seen": 1769377294673
+      }
+    },
+    {
+      "ts": 1769377288704,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -58,
+        "heap_free": 171732,
+        "uptime_s": 965,
+        "reconnects": 15,
+        "fw_version": "1",
+        "timestamp": 1769377289,
+        "last_seen": 1769377288704
+      }
+    },
+    {
+      "ts": 1769377281173,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769377281,
+        "source_type": "PIR",
+        "last_seen": 1769377281173
+      }
+    },
+    {
+      "ts": 1769377263942,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "ALERT",
+        "detail": "",
+        "last_seen": 1769377263942
+      }
+    },
+    {
+      "ts": 1769377258705,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -56,
+        "heap_free": 171836,
+        "uptime_s": 935,
+        "reconnects": 14,
+        "fw_version": "1",
+        "timestamp": 1769377259,
+        "last_seen": 1769377258705
+      }
+    },
+    {
+      "ts": 1769377253674,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769377253,
+        "source_type": "PIR",
+        "last_seen": 1769377253674
+      }
+    },
+    {
+      "ts": 1769377241174,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769377241,
+        "source_type": "PIR",
+        "last_seen": 1769377241174
+      }
+    },
+    {
+      "ts": 1769377228703,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -55,
+        "heap_free": 171836,
+        "uptime_s": 905,
+        "reconnects": 14,
+        "fw_version": "1",
+        "timestamp": 1769377228,
+        "last_seen": 1769377228703
+      }
+    },
+    {
+      "ts": 1769377226670,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769377226,
+        "source_type": "PIR",
+        "last_seen": 1769377226670
+      }
+    },
+    {
+      "ts": 1769377213167,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769377213,
+        "source_type": "PIR",
+        "last_seen": 1769377213167
+      }
+    },
+    {
+      "ts": 1769377203752,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769377201,
+        "source_type": "PIR",
+        "last_seen": 1769377203752
+      }
+    },
+    {
+      "ts": 1769377201550,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "ALERT",
+        "detail": "",
+        "last_seen": 1769377201550
+      }
+    },
+    {
+      "ts": 1769377201180,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769377201,
+        "source_type": "PIR",
+        "last_seen": 1769377201180
+      }
+    },
+    {
+      "ts": 1769377198712,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -58,
+        "heap_free": 171844,
+        "uptime_s": 875,
+        "reconnects": 13,
+        "fw_version": "1",
+        "timestamp": 1769377198,
+        "last_seen": 1769377198712
+      }
+    },
+    {
+      "ts": 1769377185177,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769377185,
+        "source_type": "PIR",
+        "last_seen": 1769377185177
+      }
+    },
+    {
+      "ts": 1769377171680,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769377171,
+        "source_type": "PIR",
+        "last_seen": 1769377171680
+      }
+    },
+    {
+      "ts": 1769377168697,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -59,
+        "heap_free": 171824,
+        "uptime_s": 845,
+        "reconnects": 13,
+        "fw_version": "1",
+        "timestamp": 1769377168,
+        "last_seen": 1769377168697
+      }
+    },
+    {
+      "ts": 1769377154180,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769377154,
+        "source_type": "PIR",
+        "last_seen": 1769377154180
+      }
+    },
+    {
+      "ts": 1769377138495,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "ALERT",
+        "detail": "",
+        "last_seen": 1769377138495
+      }
+    },
+    {
+      "ts": 1769377108689,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -62,
+        "heap_free": 171812,
+        "uptime_s": 785,
+        "reconnects": 12,
+        "fw_version": "1",
+        "timestamp": 1769377108,
+        "last_seen": 1769377108689
+      }
+    },
+    {
+      "ts": 1769377107399,
+      "topic": "smartlock/command_ack",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "command": "MODE_HOME",
+        "status": "ok",
+        "reason": "mode_home",
+        "timestamp": 1769377107,
+        "last_seen": 1769377107399
+      }
+    },
+    {
+      "ts": 1769377080078,
+      "topic": "smartlock/command_ack",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "command": "MODE_NIGHT",
+        "status": "ok",
+        "reason": "mode_night",
+        "timestamp": 1769377080,
+        "last_seen": 1769377080078
+      }
+    },
+    {
+      "ts": 1769377078686,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -63,
+        "heap_free": 171736,
+        "uptime_s": 755,
+        "reconnects": 12,
+        "fw_version": "1",
+        "timestamp": 1769377078,
+        "last_seen": 1769377078686
+      }
+    },
+    {
+      "ts": 1769377075642,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "ALERT",
+        "detail": "",
+        "last_seen": 1769377075642
+      }
+    },
+    {
+      "ts": 1769377070140,
+      "topic": "smartlock/command_ack",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "command": "MODE_AWAY",
+        "status": "ok",
+        "reason": "mode_away",
+        "timestamp": 1769377070,
+        "last_seen": 1769377070140
+      }
+    },
+    {
+      "ts": 1769377065887,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "door",
+        "message": "Command lock",
+        "detail": "Command lock",
+        "timestamp": 1769377066,
+        "source_type": "LOCK",
+        "last_seen": 1769377065887
+      }
+    },
+    {
+      "ts": 1769377065883,
+      "topic": "smartlock/command_ack",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "command": "LOCK",
+        "status": "ok",
+        "reason": "locked",
+        "timestamp": 1769377066,
+        "last_seen": 1769377065883
+      }
+    },
+    {
+      "ts": 1769377065662,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769377065,
+        "source_type": "PIR",
+        "last_seen": 1769377065662
+      }
+    },
+    {
+      "ts": 1769377062502,
+      "topic": "smartlock/command_ack",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "command": "UNLOCK",
+        "status": "ok",
+        "reason": "unlocked",
+        "timestamp": 1769377062,
+        "last_seen": 1769377062502
+      }
+    },
+    {
+      "ts": 1769377062500,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "door",
+        "message": "Command unlock",
+        "detail": "Command unlock",
+        "timestamp": 1769377062,
+        "source_type": "UNLOCK",
+        "last_seen": 1769377062500
+      }
+    },
+    {
+      "ts": 1769377048691,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -56,
+        "heap_free": 171820,
+        "uptime_s": 725,
+        "reconnects": 11,
+        "fw_version": "1",
+        "timestamp": 1769377048,
+        "last_seen": 1769377048691
+      }
+    },
+    {
+      "ts": 1769377018692,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -63,
+        "heap_free": 171740,
+        "uptime_s": 695,
+        "reconnects": 11,
+        "fw_version": "1",
+        "timestamp": 1769377018,
+        "last_seen": 1769377018692
+      }
+    },
+    {
+      "ts": 1769377013449,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "ALERT",
+        "detail": "",
+        "last_seen": 1769377013449
+      }
+    },
+    {
+      "ts": 1769376988692,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -63,
+        "heap_free": 171816,
+        "uptime_s": 665,
+        "reconnects": 10,
+        "fw_version": "1",
+        "timestamp": 1769376988,
+        "last_seen": 1769376988692
+      }
+    },
+    {
+      "ts": 1769376958685,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -57,
+        "heap_free": 171816,
+        "uptime_s": 635,
+        "reconnects": 10,
+        "fw_version": "1",
+        "timestamp": 1769376958,
+        "last_seen": 1769376958685
+      }
+    },
+    {
+      "ts": 1769376951285,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "ALERT",
+        "detail": "",
+        "last_seen": 1769376951285
+      }
+    },
+    {
+      "ts": 1769376928659,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -55,
+        "heap_free": 171816,
+        "uptime_s": 605,
+        "reconnects": 9,
+        "fw_version": "1",
+        "timestamp": 1769376928,
+        "last_seen": 1769376928659
+      }
+    },
+    {
+      "ts": 1769376898657,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -58,
+        "heap_free": 171816,
+        "uptime_s": 575,
+        "reconnects": 9,
+        "fw_version": "1",
+        "timestamp": 1769376898,
+        "last_seen": 1769376898657
+      }
+    },
+    {
+      "ts": 1769376889338,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "ALERT",
+        "detail": "",
+        "last_seen": 1769376889338
+      }
+    },
+    {
+      "ts": 1769376868680,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -56,
+        "heap_free": 171812,
+        "uptime_s": 545,
+        "reconnects": 8,
+        "fw_version": "1",
+        "timestamp": 1769376868,
+        "last_seen": 1769376868680
+      }
+    },
+    {
+      "ts": 1769376838679,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -59,
+        "heap_free": 171812,
+        "uptime_s": 515,
+        "reconnects": 8,
+        "fw_version": "1",
+        "timestamp": 1769376838,
+        "last_seen": 1769376838679
+      }
+    },
+    {
+      "ts": 1769376826382,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "ALERT",
+        "detail": "",
+        "last_seen": 1769376826382
+      }
+    },
+    {
+      "ts": 1769376815135,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769376815,
+        "source_type": "PIR",
+        "last_seen": 1769376815135
+      }
+    },
+    {
+      "ts": 1769376808659,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -55,
+        "heap_free": 171816,
+        "uptime_s": 485,
+        "reconnects": 7,
+        "fw_version": "1",
+        "timestamp": 1769376808,
+        "last_seen": 1769376808659
+      }
+    },
+    {
+      "ts": 1769376802861,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion while away",
+        "detail": "Motion while away",
+        "timestamp": 1769376802,
+        "source_type": "ALARM",
+        "last_seen": 1769376802861
+      }
+    },
+    {
+      "ts": 1769376802858,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "PIR motion",
+        "detail": "PIR motion",
+        "timestamp": 1769376802,
+        "source_type": "CAM_CAPTURE",
+        "last_seen": 1769376802858
+      }
+    },
+    {
+      "ts": 1769376802642,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769376802,
+        "source_type": "PIR",
+        "last_seen": 1769376802642
+      }
+    },
+    {
+      "ts": 1769376790086,
+      "topic": "smartlock/command_ack",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "command": "MODE_AWAY",
+        "status": "ok",
+        "reason": "mode_away",
+        "timestamp": 1769376790,
+        "last_seen": 1769376790086
+      }
+    },
+    {
+      "ts": 1769376778661,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -56,
+        "heap_free": 171808,
+        "uptime_s": 455,
+        "reconnects": 7,
+        "fw_version": "1",
+        "timestamp": 1769376778,
+        "last_seen": 1769376778661
+      }
+    },
+    {
+      "ts": 1769376763986,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "ALERT",
+        "detail": "",
+        "last_seen": 1769376763986
+      }
+    },
+    {
+      "ts": 1769376748675,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -56,
+        "heap_free": 171812,
+        "uptime_s": 425,
+        "reconnects": 6,
+        "fw_version": "1",
+        "timestamp": 1769376748,
+        "last_seen": 1769376748675
+      }
+    },
+    {
+      "ts": 1769376733319,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769376733,
+        "source_type": "PIR",
+        "last_seen": 1769376733319
+      }
+    },
+    {
+      "ts": 1769376732858,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Door opened while locked",
+        "detail": "Door opened while locked",
+        "timestamp": 1769376732,
+        "source_type": "FORCED_ENTRY",
+        "last_seen": 1769376732858
+      }
+    },
+    {
+      "ts": 1769376732855,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Forced entry detected",
+        "detail": "Forced entry detected",
+        "timestamp": 1769376732,
+        "source_type": "ALARM",
+        "last_seen": 1769376732855
+      }
+    },
+    {
+      "ts": 1769376732643,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "door",
+        "message": "Door opened",
+        "detail": "Door opened",
+        "timestamp": 1769376732,
+        "source_type": "REED",
+        "last_seen": 1769376732643
+      }
+    },
+    {
+      "ts": 1769376725302,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "door",
+        "message": "Keypad lock",
+        "detail": "Keypad lock",
+        "timestamp": 1769376725,
+        "source_type": "LOCK",
+        "last_seen": 1769376725302
+      }
+    },
+    {
+      "ts": 1769376722970,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "door",
+        "message": "Keypad unlock",
+        "detail": "Keypad unlock",
+        "timestamp": 1769376723,
+        "source_type": "UNLOCK",
+        "last_seen": 1769376722970
+      }
+    },
+    {
+      "ts": 1769376719101,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769376719,
+        "source_type": "PIR",
+        "last_seen": 1769376719101
+      }
+    },
+    {
+      "ts": 1769376718674,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -57,
+        "heap_free": 171812,
+        "uptime_s": 395,
+        "reconnects": 6,
+        "fw_version": "1",
+        "timestamp": 1769376718,
+        "last_seen": 1769376718674
+      }
+    },
+    {
+      "ts": 1769376714147,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "door",
+        "message": "Keypad lock",
+        "detail": "Keypad lock",
+        "timestamp": 1769376714,
+        "source_type": "LOCK",
+        "last_seen": 1769376714147
+      }
+    },
+    {
+      "ts": 1769376709452,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "door",
+        "message": "Keypad unlock",
+        "detail": "Keypad unlock",
+        "timestamp": 1769376709,
+        "source_type": "UNLOCK",
+        "last_seen": 1769376709452
+      }
+    },
+    {
+      "ts": 1769376705736,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769376706,
+        "source_type": "PIR",
+        "last_seen": 1769376705736
+      }
+    },
+    {
+      "ts": 1769376701907,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "ALERT",
+        "detail": "",
+        "last_seen": 1769376701907
+      }
+    },
+    {
+      "ts": 1769376693978,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769376694,
+        "source_type": "PIR",
+        "last_seen": 1769376693978
+      }
+    },
+    {
+      "ts": 1769376688688,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -58,
+        "heap_free": 171732,
+        "uptime_s": 365,
+        "reconnects": 5,
+        "fw_version": "1",
+        "timestamp": 1769376688,
+        "last_seen": 1769376688688
+      }
+    },
+    {
+      "ts": 1769376681869,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769376682,
+        "source_type": "PIR",
+        "last_seen": 1769376681869
+      }
+    },
+    {
+      "ts": 1769376668290,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769376668,
+        "source_type": "PIR",
+        "last_seen": 1769376668290
+      }
+    },
+    {
+      "ts": 1769376662928,
+      "topic": "smartlock/command_ack",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "command": "SET_PIN",
+        "status": "ok",
+        "reason": "pin updated",
+        "timestamp": 1769376663,
+        "last_seen": 1769376662928
+      }
+    },
+    {
+      "ts": 1769376658698,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -57,
+        "heap_free": 171812,
+        "uptime_s": 335,
+        "reconnects": 5,
+        "fw_version": "1",
+        "timestamp": 1769376658,
+        "last_seen": 1769376658698
+      }
+    },
+    {
+      "ts": 1769376655693,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769376655,
+        "source_type": "PIR",
+        "last_seen": 1769376655693
+      }
+    },
+    {
+      "ts": 1769376651602,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "door",
+        "message": "Command lock",
+        "detail": "Command lock",
+        "timestamp": 1769376651,
+        "source_type": "LOCK",
+        "last_seen": 1769376651602
+      }
+    },
+    {
+      "ts": 1769376651600,
+      "topic": "smartlock/command_ack",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "command": "LOCK",
+        "status": "ok",
+        "reason": "locked",
+        "timestamp": 1769376651,
+        "last_seen": 1769376651600
+      }
+    },
+    {
+      "ts": 1769376647961,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "door",
+        "message": "Command unlock",
+        "detail": "Command unlock",
+        "timestamp": 1769376647,
+        "source_type": "UNLOCK",
+        "last_seen": 1769376647961
+      }
+    },
+    {
+      "ts": 1769376647960,
+      "topic": "smartlock/command_ack",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "command": "UNLOCK",
+        "status": "ok",
+        "reason": "unlocked",
+        "timestamp": 1769376647,
+        "last_seen": 1769376647960
+      }
+    },
+    {
+      "ts": 1769376642433,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769376642,
+        "source_type": "PIR",
+        "last_seen": 1769376642433
+      }
+    },
+    {
+      "ts": 1769376639571,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "ALERT",
+        "detail": "",
+        "last_seen": 1769376639571
+      }
+    },
+    {
+      "ts": 1769376629243,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769376629,
+        "source_type": "PIR",
+        "last_seen": 1769376629243
+      }
+    },
+    {
+      "ts": 1769376628692,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -58,
+        "heap_free": 171816,
+        "uptime_s": 305,
+        "reconnects": 4,
+        "fw_version": "1",
+        "timestamp": 1769376628,
+        "last_seen": 1769376628692
+      }
+    },
+    {
+      "ts": 1769376614688,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769376614,
+        "source_type": "PIR",
+        "last_seen": 1769376614688
+      }
+    },
+    {
+      "ts": 1769376602983,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769376601,
+        "source_type": "PIR",
+        "last_seen": 1769376602983
+      }
+    },
+    {
+      "ts": 1769376598687,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -59,
+        "heap_free": 171816,
+        "uptime_s": 275,
+        "reconnects": 4,
+        "fw_version": "1",
+        "timestamp": 1769376598,
+        "last_seen": 1769376598687
+      }
+    },
+    {
+      "ts": 1769376588685,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769376588,
+        "source_type": "PIR",
+        "last_seen": 1769376588685
+      }
+    },
+    {
+      "ts": 1769376577170,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "ALERT",
+        "detail": "",
+        "last_seen": 1769376577170
+      }
+    },
+    {
+      "ts": 1769376569671,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769376569,
+        "source_type": "PIR",
+        "last_seen": 1769376569671
+      }
+    },
+    {
+      "ts": 1769376568665,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -59,
+        "heap_free": 171792,
+        "uptime_s": 245,
+        "reconnects": 3,
+        "fw_version": "1",
+        "timestamp": 1769376568,
+        "last_seen": 1769376568665
+      }
+    },
+    {
+      "ts": 1769376548159,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769376548,
+        "source_type": "PIR",
+        "last_seen": 1769376548159
+      }
+    },
+    {
+      "ts": 1769376538664,
+      "topic": "smartlock/metric",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "rssi": -57,
+        "heap_free": 171720,
+        "uptime_s": 215,
+        "reconnects": 3,
+        "fw_version": "1",
+        "timestamp": 1769376538,
+        "last_seen": 1769376538664
+      }
+    },
+    {
+      "ts": 1769376536392,
+      "topic": "smartlock/alert",
+      "payload": {
+        "status": "offline",
+        "source_type": "ALERT",
+        "type": "system",
+        "message": "ALERT",
+        "detail": "",
+        "last_seen": 1769376536392
+      }
+    },
+    {
+      "ts": 1769376530155,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769376530,
+        "source_type": "PIR",
+        "last_seen": 1769376530155
+      }
+    },
+    {
+      "ts": 1769376517650,
+      "topic": "smartlock/alert",
+      "payload": {
+        "device_id": "smartlock-68fe718af264",
+        "type": "intrusion",
+        "message": "Motion detected",
+        "detail": "Motion detected",
+        "timestamp": 1769376517,
+        "source_type": "PIR",
+        "last_seen": 1769376517650
+      }
+    }
+  ]
+}
