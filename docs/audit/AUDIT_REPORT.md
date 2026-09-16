@@ -90,6 +90,13 @@ were **not** force-merged and `main` was not rewritten. Instead:
   `git check-ignore firmware/include/app_config.h` (ignored).
 - **Dependencies:** Rotation is an out-of-band action only the device owner
   can perform. It is the single most urgent item.
+- **Additional exposure (pre-existing, not introduced by this audit):**
+  `server/render.yaml:13-15` also hardcodes the MQTT broker host and the
+  MQTT username. These values have been public on `smart-door-lock`'s `main`
+  since the original `01ac2bf` commit. The corresponding `MQTT_PASSWORD` and
+  `DASH_TOKEN` are correctly marked `sync: false` and are not in the file.
+  Because the broker host plus account name are exposed, the rotated MQTT
+  account should use a new username as well as a new password.
 
 ### SEC-02 — Shared device credentials across the whole fleet
 
@@ -520,6 +527,7 @@ were **not** force-merged and `main` was not rewritten. Instead:
 | SSE auth | `GET /api/stream` | NOT PROTECTED (SEC-04) |
 | Lock firmware build | ESP-IDF / PlatformIO | NOT RUN — no toolchain installed |
 | Camera firmware build | PlatformIO | NOT RUN — no toolchain installed |
+| Pushed-tree secret scan | `git grep` over the pushed branch | PASS for files this audit touched; `server/render.yaml:13-15` retains pre-existing broker host/username (see SEC-01 note) |
 | Firmware static balance | brace/paren/bracket depth | PASS — balanced |
 | Firmware include consistency | header resolution analysis | PARTIAL — `ca_cert.h` unused, `app_config.h` now untracked (REL-05) |
 | Unit/integration tests | none present | NOT PRESENT |
