@@ -7,3 +7,8 @@ server/data.db
 server/.data.db.tmp
 server/public/_script_tmp.js
 firmware/sdkconfig.pir_test
+
+# Nested repository bookkeeping (must never be committed into the root repo)
+server/.git/
+# Local firmware credentials - keep secrets out of source control
+firmware/include/app_config.h

@@ -19,30 +19,26 @@
 #include "nvs.h"
 #include "mqtt_client.h"
 #include "driver/gpio.h"
-#include "driver/ledc.h"
 #include "esp_timer.h"
 #include "esp_app_desc.h"
 #include "esp_https_ota.h"
 #include "esp_http_client.h"
 
 #include "app_config.h"
+#include "servo_control.h"
 
 static const char *TAG = TAG_MAIN;
 
-// Device ID required by app_config.h
 char g_device_id[32] = {0};
 
-// WiFi event group
 static EventGroupHandle_t wifi_event_group;
 #define WIFI_CONNECTED_BIT BIT0
 #define WIFI_FAIL_BIT BIT1
 
-// MQTT
 static esp_mqtt_client_handle_t mqtt_client = NULL;
 static bool mqtt_connected = false;
 static uint32_t mqtt_reconnects = 0;
 
-// Lock state
 typedef enum {
     LOCK_STATE_LOCKED = 0,
     LOCK_STATE_UNLOCKED = 1
@@ -50,7 +46,6 @@ typedef enum {
 
 static lock_state_t lock_state = LOCK_STATE_LOCKED;
 
-// Security mode (kept for payload compatibility)
 typedef enum {
     MODE_HOME = 0,
     MODE_AWAY = 1,
@@ -59,7 +54,6 @@ typedef enum {
 
 static security_mode_t current_mode = MODE_HOME;
 
-// Sensor state + debounce
 static int pir_stable = 0;
 static int reed_stable = 0;
 static int fire_stable = 0;
@@ -67,12 +61,10 @@ static bool pir_active = false;
 static bool reed_active = false;
 static bool fire_active = false;
 
-// Alarm
 static bool alarm_active = false;
 static int64_t alarm_start_ms = 0;
 static bool alarm_silenced = false;
 
-// Auto-lock
 static int64_t unlock_start_ms = 0;
 static int64_t door_open_start_ms = 0;
 static bool door_held_alerted = false;
@@ -81,39 +73,32 @@ static bool pir_dwell_triggered = false;
 static bool pir_tamper_alerted = false;
 static bool reed_tamper_alerted = false;
 
-// Keypad
 #define KEYPAD_MAX_LEN 10
 static char keypad_buffer[KEYPAD_MAX_LEN + 1];
 static int keypad_pos = 0;
 static int64_t keypad_lockout_until_ms = 0;
 static char lock_password[KEYPAD_MAX_LEN + 1] = DEFAULT_LOCK_PASSWORD;
 
-// NVS
 static nvs_handle_t nvs_storage_handle;
 static uint32_t boot_count = 0;
 static uint32_t failed_attempts = 0;
 
-// Task handles
 static TaskHandle_t sensor_task_handle = NULL;
 static TaskHandle_t control_task_handle = NULL;
 static TaskHandle_t health_task_handle = NULL;
 
-// Command queue
 typedef struct {
     char command[64];
 } command_t;
 static QueueHandle_t command_queue = NULL;
 
-// WiFi retry
 static int wifi_retry_count = 0;
 static int wifi_backoff_ms = WIFI_BACKOFF_MIN_MS;
 
-// Forward declarations
 static void wifi_init_sta(void);
 static void initialize_sntp(void);
 static void mqtt_app_start(void);
 static void gpio_init_all(void);
-static void servo_init(void);
 static void keypad_init(void);
 static char scan_keypad(void);
 static void configure_input(gpio_num_t pin, bool pullup, bool pulldown);
@@ -151,9 +136,10 @@ static int64_t now_ms(void) {
 static void wifi_event_handler(void* arg, esp_event_base_t event_base,
                               int32_t event_id, void* event_data)
 {
+    (void)arg;
+    (void)event_data;
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
         esp_wifi_connect();
-        ESP_LOGI(TAG, "WiFi started, connecting...");
     } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
         if (wifi_retry_count < 10) {
             ESP_LOGW(TAG, "WiFi disconnected, retry %d in %d ms", wifi_retry_count + 1, wifi_backoff_ms);
@@ -167,32 +153,28 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base,
             xEventGroupSetBits(wifi_event_group, WIFI_FAIL_BIT);
         }
     } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
-        ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
-        ESP_LOGI(TAG, "✅ WiFi connected! IP: " IPSTR, IP2STR(&event->ip_info.ip));
         wifi_retry_count = 0;
         wifi_backoff_ms = WIFI_BACKOFF_MIN_MS;
         xEventGroupSetBits(wifi_event_group, WIFI_CONNECTED_BIT);
-        if (esp_wifi_set_ps(WIFI_PS_NONE) == ESP_OK) {
-            ESP_LOGI(TAG, "✅ WiFi power save disabled");
-        }
+        esp_wifi_set_ps(WIFI_PS_NONE);
     }
 }
 
 static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data)
 {
+    (void)handler_args;
+    (void)base;
     esp_mqtt_event_handle_t event = event_data;
 
     switch ((esp_mqtt_event_id_t)event_id) {
         case MQTT_EVENT_CONNECTED:
-            ESP_LOGI(TAG, "✅✅✅ MQTT CONNECTED SUCCESSFULLY! ✅✅✅");
             mqtt_connected = true;
             esp_mqtt_client_subscribe(mqtt_client, MQTT_TOPIC_CMD, 1);
-            ESP_LOGI(TAG, "Subscribed to: %s", MQTT_TOPIC_CMD);
             publish_state();
             break;
 
         case MQTT_EVENT_DISCONNECTED:
-            ESP_LOGW(TAG, "⚠️ MQTT disconnected");
+            ESP_LOGW(TAG, "MQTT disconnected");
             mqtt_connected = false;
             mqtt_reconnects++;
             break;
@@ -202,7 +184,6 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
             int len = event->data_len < (int)sizeof(cmd) - 1 ? event->data_len : (int)sizeof(cmd) - 1;
             memcpy(cmd, event->data, len);
             cmd[len] = '\0';
-            ESP_LOGI(TAG, "📨 MQTT command: %s", cmd);
             command_t msg;
             strncpy(msg.command, cmd, sizeof(msg.command) - 1);
             msg.command[sizeof(msg.command) - 1] = '\0';
@@ -211,7 +192,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
         }
 
         case MQTT_EVENT_ERROR:
-            ESP_LOGE(TAG, "❌ MQTT ERROR event");
+            ESP_LOGE(TAG, "MQTT ERROR event");
             if (event->error_handle->error_type == MQTT_ERROR_TYPE_TCP_TRANSPORT) {
                 ESP_LOGE(TAG, "TLS stack error: 0x%x", event->error_handle->esp_tls_stack_err);
             }
@@ -253,12 +234,10 @@ static void wifi_init_sta(void)
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
     ESP_ERROR_CHECK(esp_wifi_start());
 
-    ESP_LOGI(TAG, "WiFi initialization complete, connecting to '%s'...", WIFI_STA_SSID);
 }
 
 static void initialize_sntp(void)
 {
-    ESP_LOGI(TAG, "Initializing SNTP...");
     esp_sntp_setoperatingmode(SNTP_OPMODE_POLL);
     esp_sntp_setservername(0, SNTP_SERVER_PRIMARY);
     esp_sntp_setservername(1, SNTP_SERVER_SECONDARY);
@@ -267,7 +246,6 @@ static void initialize_sntp(void)
     int retry = 0;
     const int retry_count = 15;
     while (esp_sntp_get_sync_status() == SNTP_SYNC_STATUS_RESET && ++retry < retry_count) {
-        ESP_LOGI(TAG, "Waiting for time sync... (%d/%d)", retry, retry_count);
         vTaskDelay(pdMS_TO_TICKS(2000));
     }
 
@@ -278,22 +256,18 @@ static void initialize_sntp(void)
         localtime_r(&now, &timeinfo);
         char strftime_buf[64];
         strftime(strftime_buf, sizeof(strftime_buf), "%c", &timeinfo);
-        ESP_LOGI(TAG, "✅ Time synchronized: %s", strftime_buf);
     } else {
-        ESP_LOGW(TAG, "⚠️ Time sync timeout - continuing anyway");
+        ESP_LOGW(TAG, "Time sync timeout - continuing anyway");
     }
 
     setenv("TZ", TZ_INFO, 1);
     tzset();
 
-    ESP_LOGI(TAG, "⏱️ Waiting 2 seconds for DNS stabilization...");
     vTaskDelay(pdMS_TO_TICKS(2000));
-    ESP_LOGI(TAG, "✅ DNS stabilization complete");
 }
 
 static void mqtt_app_start(void)
 {
-    ESP_LOGI(TAG, "📡 Configuring MQTT client...");
 
     esp_mqtt_client_config_t mqtt_cfg = {
         .broker = {
@@ -324,12 +298,11 @@ static void mqtt_app_start(void)
 
     mqtt_client = esp_mqtt_client_init(&mqtt_cfg);
     if (mqtt_client == NULL) {
-        ESP_LOGE(TAG, "❌ Failed to initialize MQTT client");
+        ESP_LOGE(TAG, "Failed to initialize MQTT client");
         return;
     }
 
     ESP_ERROR_CHECK(esp_mqtt_client_register_event(mqtt_client, ESP_EVENT_ANY_ID, mqtt_event_handler, NULL));
-    ESP_LOGI(TAG, "🚀 Starting MQTT client...");
     ESP_ERROR_CHECK(esp_mqtt_client_start(mqtt_client));
 }
 
@@ -364,35 +337,6 @@ static void gpio_init_all(void)
     gpio_set_level(PIN_LED_RED, 1);
     gpio_set_level(PIN_LED_GREEN, 0);
 
-    ESP_LOGI(TAG, "✅ GPIO initialized");
-}
-
-static void servo_init(void)
-{
-    ledc_timer_config_t ledc_timer = {
-        .speed_mode = LEDC_LOW_SPEED_MODE,
-        .timer_num = LEDC_TIMER_0,
-        .duty_resolution = LEDC_TIMER_13_BIT,
-        .freq_hz = 50,
-        .clk_cfg = LEDC_AUTO_CLK
-    };
-    ESP_ERROR_CHECK(ledc_timer_config(&ledc_timer));
-
-    ledc_channel_config_t ledc_channel = {
-        .speed_mode = LEDC_LOW_SPEED_MODE,
-        .channel = LEDC_CHANNEL_0,
-        .timer_sel = LEDC_TIMER_0,
-        .intr_type = LEDC_INTR_DISABLE,
-        .gpio_num = PIN_SERVO,
-        .duty = 0,
-        .hpoint = 0
-    };
-    ESP_ERROR_CHECK(ledc_channel_config(&ledc_channel));
-
-    ESP_ERROR_CHECK(ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, 410));
-    ESP_ERROR_CHECK(ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0));
-
-    ESP_LOGI(TAG, "✅ Servo initialized (locked position)");
 }
 
 static void keypad_init(void)
@@ -416,7 +360,6 @@ static void keypad_init(void)
     gpio_set_level(PIN_KP_R3, 0);
     gpio_set_level(PIN_KP_R4, 0);
 
-    ESP_LOGI(TAG, "✅ Keypad initialized");
 }
 
 static char scan_keypad(void)
@@ -477,8 +420,6 @@ static void load_nvs_state(void)
 
     nvs_commit(nvs_storage_handle);
 
-    ESP_LOGI(TAG, "✅ NVS loaded: boot=%lu, lock=%d, failed=%lu",
-             boot_count, lock_state, failed_attempts);
 }
 
 static void save_nvs_state(void)
@@ -513,7 +454,6 @@ static void publish_state(void)
              boot_count, failed_attempts, (long long)now);
 
     esp_mqtt_client_publish(mqtt_client, MQTT_TOPIC_STATE, payload, 0, 1, 0);
-    ESP_LOGI(TAG, "📤 State published: %s", payload);
 }
 
 static void publish_alert(const char *type, const char *detail)
@@ -575,7 +515,6 @@ static void publish_metric(void)
 
 static bool validate_command(const char *cmd)
 {
-    // Expected: COMMAND|nonce|timestamp
     char buf[80];
     strncpy(buf, cmd, sizeof(buf) - 1);
     buf[sizeof(buf) - 1] = '\0';
@@ -633,15 +572,12 @@ static void handle_command(const char *cmd)
     cmd_copy[sizeof(cmd_copy) - 1] = '\0';
     char *command = has_delim ? strtok(cmd_copy, "|") : cmd_copy;
 
-    ESP_LOGI(TAG, "✅ Command validated: %s", command);
 
     if (strcmp(command, "LOCK") == 0) {
         apply_lock_state(LOCK_STATE_LOCKED, "Command lock", true);
-        ESP_LOGI(TAG, "🔒 Door LOCKED");
         publish_command_ack(command, "ok", "locked");
     } else if (strcmp(command, "UNLOCK") == 0) {
         apply_lock_state(LOCK_STATE_UNLOCKED, "Command unlock", true);
-        ESP_LOGI(TAG, "🔓 Door UNLOCKED");
         publish_command_ack(command, "ok", "unlocked");
     } else if (strcmp(command, "SILENCE") == 0) {
         alarm_active = false;
@@ -684,7 +620,6 @@ static void handle_command(const char *cmd)
 
 static void sensor_task(void *pvParameters)
 {
-    ESP_LOGI(TAG, "✅ Sensor task started");
 
     while (1) {
         int64_t now = now_ms();
@@ -863,7 +798,6 @@ static void sensor_task(void *pvParameters)
 
 static void control_task(void *pvParameters)
 {
-    ESP_LOGI(TAG, "✅ Control task started");
 
     while (1) {
         static int64_t last_schedule_ms = 0;
@@ -904,7 +838,6 @@ static void control_task(void *pvParameters)
 
 static void health_task(void *pvParameters)
 {
-    ESP_LOGI(TAG, "✅ Health monitor started");
 
     while (1) {
         size_t free_heap = esp_get_free_heap_size();
@@ -990,7 +923,6 @@ static void trigger_cam_capture(void)
 
     esp_err_t err = esp_http_client_perform(client);
     if (err == ESP_OK) {
-        ESP_LOGI(TAG, "CAM capture triggered");
     } else {
         ESP_LOGW(TAG, "CAM capture failed: %s", esp_err_to_name(err));
     }
@@ -1005,14 +937,12 @@ static void apply_lock_state(lock_state_t new_state, const char *reason, bool no
 
     lock_state = new_state;
     if (lock_state == LOCK_STATE_UNLOCKED) {
-        ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, 615);
-        ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0);
+        ESP_ERROR_CHECK(servo_control_set_unlocked());
         gpio_set_level(PIN_LED_RED, 0);
         gpio_set_level(PIN_LED_GREEN, 1);
         unlock_start_ms = now_ms();
     } else {
-        ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, 410);
-        ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0);
+        ESP_ERROR_CHECK(servo_control_set_locked());
         gpio_set_level(PIN_LED_RED, 1);
         gpio_set_level(PIN_LED_GREEN, 0);
         unlock_start_ms = 0;
@@ -1028,9 +958,6 @@ static void apply_lock_state(lock_state_t new_state, const char *reason, bool no
 
 void app_main(void)
 {
-    ESP_LOGI(TAG, "=================================");
-    ESP_LOGI(TAG, "🔐 Smart Door Lock Starting...");
-    ESP_LOGI(TAG, "=================================");
 
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
@@ -1038,12 +965,11 @@ void app_main(void)
         ret = nvs_flash_init();
     }
     ESP_ERROR_CHECK(ret);
-    ESP_LOGI(TAG, "✅ NVS initialized");
 
     load_nvs_state();
 
     gpio_init_all();
-    servo_init();
+    ESP_ERROR_CHECK(servo_control_init());
     keypad_init();
 
     command_queue = xQueueCreate(10, sizeof(command_t));
@@ -1062,9 +988,7 @@ void app_main(void)
         } else {
             snprintf(g_device_id, sizeof(g_device_id), "smartlock-default");
         }
-        ESP_LOGI(TAG, "Device ID: %s", g_device_id);
 
-        ESP_LOGI(TAG, "✅ WiFi connection established");
         initialize_sntp();
         mqtt_app_start();
 
@@ -1072,10 +996,7 @@ void app_main(void)
         xTaskCreate(control_task, "control_task", 4096, NULL, 5, &control_task_handle);
         xTaskCreate(health_task, "health_task", 4096, NULL, 3, &health_task_handle);
 
-        ESP_LOGI(TAG, "=================================");
-        ESP_LOGI(TAG, "✅ Smart Door Lock Ready!");
-        ESP_LOGI(TAG, "=================================");
     } else {
-        ESP_LOGE(TAG, "❌ WiFi connection failed - system halted");
+        ESP_LOGE(TAG, "WiFi connection failed - system halted");
     }
 }

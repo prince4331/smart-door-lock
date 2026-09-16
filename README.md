@@ -34,6 +34,17 @@ An industry-grade IoT-based smart home security system with password-protected d
 
 ---
 
+## ✅ Current Implementation Notes (ESP-IDF + PlatformIO)
+- Firmware lives in `firmware/` (ESP-IDF smart lock) and `firmware/esp32cam/` (ESP32-CAM).
+- Default PIN: **1069**
+- Keypad: `#` submits PIN, `*` clears input, `C` locks immediately when unlocked.
+- Telegram is handled on the **server** (see `server/.env.example`).
+- MQTT topics:
+  - `smartlock/state`, `smartlock/alert`, `smartlock/metric`, `smartlock/command_ack`
+  - Camera MQTT: `smartlock/cam/meta`, `smartlock/cam/chunk`
+
+---
+
 ## 🧩 Components Required
 
 | Component | Quantity | Specification |
@@ -144,7 +155,7 @@ const String correctPassword = "1234";  // Change to your desired password
 ### Basic Operation
 
 #### 🔓 Unlocking the Door
-1. Enter your password using the keypad (default: `1234`)
+1. Enter your password using the keypad (default: `1069`)
 2. Press `#` to submit
 3. Green LED turns ON
 4. Servo unlocks the door
@@ -173,7 +184,7 @@ const String correctPassword = "1234";  // Change to your desired password
 | `*` | Clear password |
 | `A` | Manual lock |
 | `B` | Silence alarm |
-| `C` | Reserved |
+| `C` | Lock immediately (when unlocked) |
 | `D` | Reserved |
 
 ---
@@ -385,7 +396,7 @@ Mode: ALARM
 ## 🔒 Security Recommendations
 
 ### For Production Use:
-1. **Change default password** - Never use "1234" in real deployment
+1. **Change default password** - Never use "1069" in real deployment
 2. **Use HTTPS** - Encrypt server communication
 3. **Implement authentication** - Add API keys or tokens
 4. **Add encryption** - Encrypt password transmission
