@@ -16,23 +16,66 @@ import crypto from "crypto";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Fail-closed startup. The caller's own environment is validated here, before
-// the local .env file is read and before any socket or broker connection is
-// created. Validating after dotenv would let a project .env silently mask an
-// operator who deployed with an empty environment.
+// Fail-closed startup, in this order:
+//   1. Resolve the environment file (DOTENV_CONFIG_PATH or the default .env).
+//   2. Load it with dotenv exactly once. Values already in the process
+//      environment win; the file only fills gaps, so an operator's explicit
+//      empty value is never silently overwritten from disk.
+//   3. Validate the effective configuration.
+//   4. On failure, exit before the HTTP listener, MQTT, the camera, Telegram,
+//      or the database are ever created.
+//   5. On success, initialise those services.
+//
+// Validating before dotenv would break the documented
+// `cp .env.example .env && npm start` workflow, because the tokens would not
+// be visible yet. Validating only the process environment is what made that
+// workflow fail.
 //
 // NODE_ENV=test is the harness contract: a test imports this module, so it
-// must not terminate the process on a validation failure; the caller asserts
-// on validateConfig() directly.
+// must not terminate the process; the caller asserts on validateConfig()
+// directly.
 const IS_TEST = process.env.NODE_ENV === "test";
+
+// An absolute path is honoured as-is; a relative one resolves against the
+// server directory. On Windows, path.resolve() would otherwise re-anchor an
+// already-absolute POSIX path under the cwd and the file would never load.
+const rawEnvPath = typeof process.env.DOTENV_CONFIG_PATH === "string"
+  ? process.env.DOTENV_CONFIG_PATH.trim()
+  : "";
+export const ENV_FILE_PATH = rawEnvPath && path.isAbsolute(rawEnvPath)
+  ? rawEnvPath
+  : path.resolve(__dirname, rawEnvPath || ".env");
+
+if (!IS_TEST) {
+  // dotenv does not overwrite variables that already exist in the process
+  // environment, so the caller's environment takes precedence over the file.
+  dotenv.config({ path: ENV_FILE_PATH });
+
+  const configErrors = validateServerConfig();
+  if (configErrors.length) {
+    // Every error message names the variable it is about, so the operator can
+    // see exactly what to set without reading the source.
+    for (const msg of configErrors) console.error(`[CONFIG] ${msg}`);
+    console.error(`[CONFIG] Refusing to start: ${configErrors.length} configuration problem(s) above must be resolved first.`);
+    process.exit(1);
+  }
+}
 
 export function validateConfig({ dashToken, camUploadToken, camSnapshotUrl, camStreamUrl }) {
   const errors = [];
+  // Tokens must not be merely non-empty: a guessable short value offers no
+  // protection, so a minimum length is enforced at startup as well as by the
+  // dashboard generating 32 hex characters.
+  const MIN_TOKEN_LEN = 16;
   if (!dashToken || !dashToken.trim()) {
     errors.push("DASH_TOKEN is missing, empty, or whitespace-only. Set it in the environment before starting the server.");
+  } else if (dashToken.trim().length < MIN_TOKEN_LEN) {
+    errors.push(`DASH_TOKEN must be at least ${MIN_TOKEN_LEN} characters. Generate one with: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`);
   }
   if (!camUploadToken || !camUploadToken.trim()) {
     errors.push("CAM_UPLOAD_TOKEN is missing or empty. It is required for POST /api/cam/upload (set CAM_UPLOAD_TOKEN, or the legacy CAM_TOKEN name).");
+  } else if (camUploadToken.trim().length < MIN_TOKEN_LEN) {
+    errors.push(`CAM_UPLOAD_TOKEN must be at least ${MIN_TOKEN_LEN} characters. Generate one with: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`);
   }
   if (camSnapshotUrl && !camSnapshotUrl.startsWith("https://")) {
     errors.push("CAM_SNAPSHOT_URL must use https:// when configured.");
@@ -51,19 +94,6 @@ export function validateServerConfig() {
     camStreamUrl: process.env.CAM_STREAM_URL,
   });
 }
-
-if (!IS_TEST) {
-  const configErrors = validateServerConfig();
-  if (configErrors.length) {
-    for (const msg of configErrors) console.error(`[CONFIG] ${msg}`);
-    console.error("[CONFIG] Refusing to start: required configuration is missing or insecure.");
-    process.exit(1);
-  }
-}
-
-dotenv.config();
-
-dotenv.config();
 
 const PORT = process.env.PORT || 8080;
 const MQTT_BROKER = process.env.MQTT_BROKER || "mqtt://localhost:1883";
@@ -96,8 +126,17 @@ app.use(cors({
   credentials: true
 }));
 
+// Body parsing, mounted once: every route that reads JSON or a raw image body
+// sits after this point.
 app.use(express.json());
 app.use(morgan("dev"));
+
+// Public static assets: the dashboard UI itself. Runtime camera snapshots are
+// deliberately NOT served from here — they live outside this directory and are
+// only reachable through the authenticated /api/cam/latest route below.
+// Mounted exactly once; the ordering is: security headers/CORS, body parsing,
+// public static assets, rate limiting, API authentication, API routes.
+app.use(express.static(path.join(__dirname, "../public")));
 
 // Database setup (JSON file via lowdb)
 const adapter = new JSONFile(DB_PATH);
@@ -153,7 +192,14 @@ const MQTT_TOPIC_CAM_CHUNK = "smartlock/cam/chunk";
 
 const sseClients = new Set();
 
-const camDir = path.join(__dirname, "../public/cam");
+// Runtime camera media lives OUTSIDE the public static root, so a snapshot can
+// never be fetched without a dashboard token. Only the authenticated
+// /api/cam/latest route below serves it.
+const camDir = path.resolve(
+  process.env.CAM_STORAGE_DIR && process.env.CAM_STORAGE_DIR.trim()
+    ? process.env.CAM_STORAGE_DIR.trim()
+    : path.join(__dirname, "..", "data", "cam")
+);
 const camLatestPath = path.join(camDir, "latest.jpg");
 let camLastUpdate = 0;
 fs.mkdirSync(camDir, { recursive: true });
@@ -526,9 +572,15 @@ function extractCamToken(req) {
   return null;
 }
 
-// Middleware
-app.use(express.json());
-app.use(express.static(path.join(__dirname, "../public")));
+// Public static assets: the dashboard UI itself. Runtime camera snapshots are
+// deliberately NOT served from here — they live outside this directory and are
+// only reachable through the authenticated /api/cam/latest route below.
+// Mounted exactly once; the ordering is: security headers/CORS, body parsing,
+// public static assets, rate limiting, API authentication, API routes.
+// The removed public camera asset. The static root no longer contains a
+// cam/ directory, so this path resolves to nothing: the snapshot must only
+// ever leave through the authenticated /api/cam/latest route.
+app.get("/cam/latest.jpg", (_req, res) => res.status(404).end());
 
 // Rate limiting. Only the health probe bypasses the limiter; protected read
 // paths (/api/state, /api/events, /api/cam/status, /api/stream) no longer do.
@@ -616,6 +668,29 @@ app.get("/api/cam/status", (_req, res) => {
   res.json({ last_update: camLastUpdate });
 });
 
+// The persisted snapshot. Served only through this authenticated route: the
+// file lives outside the public static root, and the legacy /cam/latest.jpg
+// path below is removed rather than redirected. Cached never.
+app.get("/api/cam/latest", (req, res) => {
+  // Path-traversal defence in depth: only a file already resolved below the
+  // storage root is ever sent.
+  const root = fs.realpathSync(camDir);
+  let resolved;
+  try {
+    resolved = fs.realpathSync(camLatestPath);
+  } catch (e) {
+    return res.status(404).json({ error: "no camera image available" });
+  }
+  if (resolved !== path.join(root, "latest.jpg")) {
+    return res.status(404).json({ error: "no camera image available" });
+  }
+  res.setHeader("Content-Type", "image/jpeg");
+  res.setHeader("Cache-Control", "no-store, private");
+  res.sendFile(resolved, (err) => {
+    if (err && !res.headersSent) res.status(404).json({ error: "no camera image available" });
+  });
+});
+
 app.get("/api/cam/stream", (req, res) => {
   pipeCameraStream(req, res);
 });
@@ -687,23 +762,21 @@ app.get("/api/stream", (req, res) => {
   req.on("close", () => sseClients.delete(client));
 });
 
-// Dashboard static assets. Mounted once, on the public directory.
-app.use(express.static(path.join(__dirname, "..", "public")));
+// Error handling: mounted last, after every route. Keeps the failure surface
+// uniform so a thrown handler cannot leak a stack trace to a client.
+app.use((err, _req, res, _next) => {
+  console.error("[API] unhandled error:", err && err.message);
+  if (res.headersSent) return;
+  res.status(500).json({ error: "internal error" });
+});
 
 // The HTTP listener starts only when this module runs as the entrypoint, and
 // only after startup configuration validation has passed. Imported by tests,
 // it stays silent.
 if (IS_ENTRYPOINT) {
-  const configErrors = validateServerConfig();
-  if (configErrors.length) {
-    for (const msg of configErrors) console.error(`[CONFIG] ${msg}`);
-    console.error("[CONFIG] Refusing to start: required configuration is missing or insecure.");
-    process.exitCode = 1;
-  } else {
-    app.listen(PORT, () => {
-      console.log(`Server running on http://localhost:${PORT}`);
-    });
-  }
+  app.listen(PORT, () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+  });
 }
 
 function broadcast(msg) {
