@@ -566,6 +566,31 @@
       pinMsg: document.getElementById('pinMsg')
     };
 
+    // Authenticated request helper. Every /api/* call except /api/health sends
+    // the token as an Authorization: Bearer header. The token is never placed
+    // in a URL or a query string.
+    function authHeaders(extra) {
+      const headers = Object.assign({}, extra || {});
+      if (ACCESS_TOKEN) headers['Authorization'] = `Bearer ${ACCESS_TOKEN}`;
+      return headers;
+    }
+
+    // Called when any request is rejected with 401: the stored credential is
+    // no longer valid, so the dashboard returns to the login state instead of
+    // retrying forever against a broken session.
+    function handleUnauthorized() {
+      ACCESS_TOKEN = null;
+      VIEWER_MODE = false;
+      elements.viewerMode.checked = false;
+      sessionStorage.removeItem('dashAccessToken');
+      closeSSE();
+      disableControlButtons();
+      elements.loginOverlay.classList.add('show');
+      elements.conn.textContent = 'Login required';
+      elements.serverDot.className = 'status-dot offline';
+      elements.serverStatus.textContent = 'Unauthorized';
+    }
+
     // Load stored token
     function loadStoredToken() {
       const stored = sessionStorage.getItem('dashAccessToken');
@@ -629,7 +654,11 @@
     }
 
     function initializeDashboard() {
-      fetch('/api/health').then(r => r.json()).then(data => {
+      fetch('/api/health').then(r => {
+        if (r.status === 401) { handleUnauthorized(); return null; }
+        return r.json();
+      }).then(data => {
+        if (!data) return;
         if (data.status === 'ok') {
           loadHistory();
           loadInitial();
@@ -646,7 +675,8 @@
 
     async function loadInitial() {
       try {
-        const res = await fetch('/api/state');
+        const res = await fetch('/api/state', { headers: authHeaders() });
+        if (res.status === 401) { handleUnauthorized(); return; }
         if (!res.ok) return;
         const data = await res.json();
         updateState(data);
@@ -699,7 +729,8 @@
 
     async function loadCameraStatus() {
       try {
-        const res = await fetch('/api/cam/status');
+        const res = await fetch('/api/cam/status', { headers: authHeaders() });
+        if (res.status === 401) { handleUnauthorized(); return; }
         if (!res.ok) return;
         const data = await res.json();
         if (data.last_update) {
@@ -719,7 +750,8 @@
 
     async function loadHistory() {
       try {
-        const res = await fetch('/api/events?limit=200');
+        const res = await fetch('/api/events?limit=200', { headers: authHeaders() });
+        if (res.status === 401) { handleUnauthorized(); return; }
         if (!res.ok) return;
         const events = await res.json();
         elements.eventFeed.innerHTML = '';
@@ -1083,14 +1115,14 @@
         }
       }, 1000);
       
-      const headers = { 'Content-Type': 'application/json' };
-      if (ACCESS_TOKEN) headers['X-Access-Token'] = ACCESS_TOKEN;
-      
+      const headers = authHeaders({ 'Content-Type': 'application/json' });
+
       fetch('/api/command', {
         method: 'POST',
         headers: headers,
         body: JSON.stringify({ command: cmd, correlation_id: correlationId })
       }).then(r => {
+        if (r.status === 401) { handleUnauthorized(); throw new Error('Unauthorized'); }
         if (!r.ok) throw new Error('HTTP ' + r.status);
         return r.json();
       }).then((data) => {
@@ -1120,13 +1152,13 @@
         return;
       }
       elements.pinMsg.textContent = 'Updating...';
-      const headers = { 'Content-Type': 'application/json' };
-      headers['X-Access-Token'] = ACCESS_TOKEN;
+      const headers = authHeaders({ 'Content-Type': 'application/json' });
       fetch('/api/pin', {
         method: 'POST',
         headers,
         body: JSON.stringify({ pin })
       }).then(r => {
+        if (r.status === 401) { handleUnauthorized(); throw new Error('Unauthorized'); }
         if (!r.ok) throw new Error('HTTP ' + r.status);
         return r.json();
       }).then(() => {
@@ -1156,48 +1188,128 @@
       }
     }
 
-    function connectSSE() {
-      const es = new EventSource('/api/stream');
-      elements.conn.textContent = 'Live';
-      elements.serverDot.className = 'status-dot online';
-      elements.serverStatus.textContent = 'Connected';
-      
-      es.onmessage = (evt) => {
-        try {
-          const msg = JSON.parse(evt.data);
-          
-          if (msg.type === 'state' && msg.payload) {
-            updateState(msg.payload);
-          } else if (msg.type === 'alert' && msg.payload) {
-            const alert = msg.payload;
-            const alertType = alert.type || 'system';
-            const detail = alert.detail || alert.source_type || '';
-            addEvent(alertType, alert.message || 'Alert triggered', detail);
-            aggregateChartData('alert', alertType);
-          } else if (msg.type === 'event' && msg.payload) {
-            const evt = msg.payload;
-            const eventType = evt.type || 'system';
-            addEvent(eventType, evt.message || JSON.stringify(evt), '');
-            aggregateChartData('event', eventType);
-          } else if (msg.type === 'metrics' && msg.payload) {
-            updateMetrics(msg.payload);
-          } else if (msg.type === 'command_ack' && msg.payload) {
-            handleCommandAck(msg.payload);
-          } else if (msg.type === 'cam' && msg.payload) {
-            updateCamera(msg.payload.last_update || msg.ts || Date.now());
-          }
-        } catch (e) {
-          console.warn('Parse error:', e);
-        }
-      };
-      
-      es.onerror = () => {
-        elements.conn.textContent = 'Reconnecting...';
+    // Live stream over fetch(). EventSource cannot set request headers, so the
+    // token is carried as an Authorization: Bearer header on a streaming GET
+    // and SSE frames are parsed from the response body.
+    let sseController = null;
+    let sseReconnectTimer = null;
+    let sseBackoff = 1000;
+    const SSE_BACKOFF_MAX = 30000;
+
+    function closeSSE() {
+      if (sseReconnectTimer) { clearTimeout(sseReconnectTimer); sseReconnectTimer = null; }
+      if (sseController) {
+        try { sseController.abort(); } catch (e) { /* already closed */ }
+        sseController = null;
+      }
+    }
+
+    function scheduleSSEReconnect() {
+      elements.conn.textContent = 'Reconnecting...';
+      elements.serverDot.className = 'status-dot offline';
+      elements.serverStatus.textContent = 'Disconnected';
+      closeSSE();
+      // Bounded exponential backoff with jitter, capped so a long outage
+      // never pushes the retry interval past 30 s.
+      sseBackoff = Math.min(SSE_BACKOFF_MAX, sseBackoff * 2);
+      const delay = Math.floor(Math.random() * sseBackoff) + 500;
+      sseReconnectTimer = setTimeout(() => connectSSE(), delay);
+    }
+
+    function handleSSEMessage(msg) {
+      if (msg.type === 'state' && msg.payload) {
+        updateState(msg.payload);
+      } else if (msg.type === 'alert' && msg.payload) {
+        const alert = msg.payload;
+        const alertType = alert.type || 'system';
+        const detail = alert.detail || alert.source_type || '';
+        addEvent(alertType, alert.message || 'Alert triggered', detail);
+        aggregateChartData('alert', alertType);
+      } else if (msg.type === 'event' && msg.payload) {
+        const evt = msg.payload;
+        const eventType = evt.type || 'system';
+        addEvent(eventType, evt.message || JSON.stringify(evt), '');
+        aggregateChartData('event', eventType);
+      } else if (msg.type === 'metrics' && msg.payload) {
+        updateMetrics(msg.payload);
+      } else if (msg.type === 'command_ack' && msg.payload) {
+        handleCommandAck(msg.payload);
+      } else if (msg.type === 'cam' && msg.payload) {
+        updateCamera(msg.payload.last_update || msg.ts || Date.now());
+      }
+    }
+
+    async function connectSSE() {
+      // A valid token is required: without it the server rejects the stream
+      // with 401 and there is nothing to connect to.
+      if (!ACCESS_TOKEN) {
+        elements.conn.textContent = 'Login required';
         elements.serverDot.className = 'status-dot offline';
-        elements.serverStatus.textContent = 'Disconnected';
-        setTimeout(() => es.close(), 500);
-        setTimeout(connectSSE, 2000);
-      };
+        elements.serverStatus.textContent = 'Unauthorized';
+        return;
+      }
+
+      closeSSE();
+      sseController = new AbortController();
+
+      try {
+        const res = await fetch('/api/stream', {
+          method: 'GET',
+          headers: authHeaders({ 'Accept': 'text/event-stream' }),
+          signal: sseController.signal
+        });
+
+        if (res.status === 401) {
+          // Credential rejected: stop retrying and return to login.
+          closeSSE();
+          handleUnauthorized();
+          return;
+        }
+        if (!res.ok) {
+          scheduleSSEReconnect();
+          return;
+        }
+
+        elements.conn.textContent = 'Live';
+        elements.serverDot.className = 'status-dot online';
+        elements.serverStatus.textContent = 'Connected';
+        // A clean connection resets the backoff window.
+        sseBackoff = 1000;
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+
+          // Complete events are separated by a blank line. Anything left in
+          // the buffer is a partial frame that must survive to the next read.
+          let sep;
+          while ((sep = buffer.indexOf('\n\n')) !== -1) {
+            const raw = buffer.slice(0, sep);
+            buffer = buffer.slice(sep + 2);
+            for (const line of raw.split('\n')) {
+              if (!line.startsWith('data:')) continue;
+              const payload = line.slice(5).trim();
+              if (!payload) continue;
+              try {
+                handleSSEMessage(JSON.parse(payload));
+              } catch (e) {
+                console.warn('Parse error:', e);
+              }
+            }
+          }
+        }
+        // Server closed the stream cleanly; reconnect with backoff.
+        scheduleSSEReconnect();
+      } catch (e) {
+        // An abort is expected when closeSSE() is called (logout or 401).
+        if (sseController === null) return;
+        scheduleSSEReconnect();
+      }
     }
 
     // Start
