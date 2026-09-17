@@ -4,6 +4,13 @@ export const SETTINGS_NS = "settings";
 export const TELEGRAM_KEY = "telegram";
 export const DISABLED_KEY = "telegram_disabled";
 
+export class TelegramConfigError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "TelegramConfigError";
+  }
+}
+
 export function parseSettingsEncryptionKey(raw) {
   if (typeof raw !== "string" || !raw.trim()) {
     throw new Error("SETTINGS_ENCRYPTION_KEY is missing");
@@ -49,7 +56,7 @@ export function decryptTelegramSettings(encryptedObj, key) {
     !encryptedObj.ciphertext ||
     !encryptedObj.auth_tag
   ) {
-    throw new Error("[TG] Stored Telegram settings could not be decrypted");
+    throw new TelegramConfigError("[TG] Stored Telegram settings could not be decrypted");
   }
 
   try {
@@ -58,7 +65,7 @@ export function decryptTelegramSettings(encryptedObj, key) {
     const authTag = Buffer.from(encryptedObj.auth_tag, "base64");
 
     if (iv.length !== 12) {
-      throw new Error("[TG] Stored Telegram settings could not be decrypted");
+      throw new TelegramConfigError("[TG] Stored Telegram settings could not be decrypted");
     }
 
     const decipher = crypto.createDecipheriv("aes-256-gcm", key, iv);
@@ -70,7 +77,7 @@ export function decryptTelegramSettings(encryptedObj, key) {
 
     return JSON.parse(plaintext.toString("utf8"));
   } catch (err) {
-    throw new Error("[TG] Stored Telegram settings could not be decrypted");
+    throw new TelegramConfigError("[TG] Stored Telegram settings could not be decrypted");
   }
 }
 
@@ -105,15 +112,29 @@ export function validateChatId(chatId) {
   return true;
 }
 
-export function resolveTelegramConfig(settings, legacyBotToken, legacyChatId, isDisabled) {
+export function resolveEffectiveTelegramConfig(settings, encryptionKey, legacyBotToken, legacyChatId) {
+  const isDisabled = settings && settings[DISABLED_KEY];
+
   if (isDisabled) {
     return null;
   }
 
-  if (settings && settings.telegram && settings.telegram.ciphertext) {
-    return {
-      source: "dashboard",
-    };
+  const hasDashboardConfig = settings && settings[TELEGRAM_KEY] && settings[TELEGRAM_KEY].ciphertext;
+
+  if (hasDashboardConfig) {
+    try {
+      const decrypted = decryptTelegramSettings(settings[TELEGRAM_KEY], encryptionKey);
+      if (!decrypted || !decrypted.bot_token || !decrypted.chat_id) {
+        throw new TelegramConfigError("[TG] Stored Telegram settings could not be decrypted");
+      }
+      return {
+        source: "dashboard",
+        bot_token: decrypted.bot_token,
+        chat_id: decrypted.chat_id,
+      };
+    } catch (err) {
+      throw new TelegramConfigError("[TG] Stored Telegram settings could not be decrypted");
+    }
   }
 
   if (legacyBotToken && legacyChatId) {
@@ -127,13 +148,33 @@ export function resolveTelegramConfig(settings, legacyBotToken, legacyChatId, is
   return null;
 }
 
-export function getDecryptedTelegram(settings, key) {
-  if (!settings || !settings.telegram || !settings.telegram.ciphertext) {
-    return null;
-  }
+export function getTelegramMetadata(settings, encryptionKey, legacyBotToken, legacyChatId) {
   try {
-    return decryptTelegramSettings(settings.telegram, key);
-  } catch {
-    return null;
+    const config = resolveEffectiveTelegramConfig(settings, encryptionKey, legacyBotToken, legacyChatId);
+    if (!config) {
+      return {
+        configured: false,
+        source: "none",
+        disabled: !!(settings && settings[DISABLED_KEY]),
+      };
+    }
+
+    return {
+      configured: true,
+      source: config.source,
+      bot_token_masked: maskBotToken(config.bot_token),
+      chat_id: config.chat_id,
+      updated_at: settings && settings[TELEGRAM_KEY] ? settings[TELEGRAM_KEY].updated_at : null,
+    };
+  } catch (err) {
+    if (err instanceof TelegramConfigError) {
+      return {
+        configured: false,
+        source: "none",
+        disabled: false,
+        error: "Stored Telegram settings are unreadable; provide a new bot token to replace them",
+      };
+    }
+    throw err;
   }
 }

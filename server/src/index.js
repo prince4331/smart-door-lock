@@ -19,8 +19,9 @@ import {
   maskBotToken,
   validateBotToken,
   validateChatId,
-  resolveTelegramConfig,
-  getDecryptedTelegram,
+  resolveEffectiveTelegramConfig,
+  getTelegramMetadata,
+  TelegramConfigError,
   SETTINGS_NS,
   TELEGRAM_KEY,
   DISABLED_KEY,
@@ -265,56 +266,56 @@ const camChunks = new Map();
 const CAM_CHUNK_TTL_MS = 120000;
 
 async function sendTelegramMessage(text) {
-  const config = resolveTelegramConfig(
-    db.data.settings,
-    TG_BOT_TOKEN,
-    TG_CHAT_ID,
-    db.data.settings && db.data.settings[DISABLED_KEY]
-  );
-
-  if (!config) return;
-
-  const botToken = config.bot_token;
-  const chatId = config.chat_id;
-
-  if (!botToken || !chatId) return;
-
-  const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
   try {
-    await fetch(url, {
+    const config = resolveEffectiveTelegramConfig(
+      db.data.settings,
+      settingsEncryptionKeyBuffer,
+      process.env.TG_BOT_TOKEN || "",
+      process.env.TG_CHAT_ID || ""
+    );
+
+    if (!config) return;
+
+    const url = `https://api.telegram.org/bot${config.bot_token}/sendMessage`;
+    const response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: chatId, text }),
+      body: JSON.stringify({ chat_id: config.chat_id, text }),
     });
+
+    const data = await response.json();
+    if (!data.ok) {
+      console.warn("[TG] sendMessage rejected by Telegram");
+    }
   } catch (err) {
     console.warn("[TG] sendMessage failed:", err.message);
   }
 }
 
 async function sendTelegramPhoto(caption) {
-  const config = resolveTelegramConfig(
-    db.data.settings,
-    TG_BOT_TOKEN,
-    TG_CHAT_ID,
-    db.data.settings && db.data.settings[DISABLED_KEY]
-  );
-
-  if (!config) return;
-
-  const botToken = config.bot_token;
-  const chatId = config.chat_id;
-
-  if (!botToken || !chatId) return;
-  if (!fs.existsSync(camLatestPath)) return;
-
-  const url = `https://api.telegram.org/bot${botToken}/sendPhoto`;
   try {
+    const config = resolveEffectiveTelegramConfig(
+      db.data.settings,
+      settingsEncryptionKeyBuffer,
+      process.env.TG_BOT_TOKEN || "",
+      process.env.TG_CHAT_ID || ""
+    );
+
+    if (!config) return;
+    if (!fs.existsSync(camLatestPath)) return;
+
+    const url = `https://api.telegram.org/bot${config.bot_token}/sendPhoto`;
     const form = new FormData();
-    form.append("chat_id", chatId);
+    form.append("chat_id", config.chat_id);
     if (caption) form.append("caption", caption);
     const data = fs.readFileSync(camLatestPath);
     form.append("photo", new Blob([data], { type: "image/jpeg" }), "latest.jpg");
-    await fetch(url, { method: "POST", body: form });
+
+    const response = await fetch(url, { method: "POST", body: form });
+    const result = await response.json();
+    if (!result.ok) {
+      console.warn("[TG] sendPhoto rejected by Telegram");
+    }
   } catch (err) {
     console.warn("[TG] sendPhoto failed:", err.message);
   }
@@ -837,49 +838,26 @@ app.get("/api/stream", (req, res) => {
 
 // Telegram settings. Authenticated above by the shared /api/ middleware.
 app.get("/api/settings/telegram", (req, res) => {
-  const isDisabled = db.data.settings && db.data.settings[DISABLED_KEY];
-  const legacyBotToken = process.env.TG_BOT_TOKEN || "";
-  const legacyChatId = process.env.TG_CHAT_ID || "";
+  try {
+    const metadata = getTelegramMetadata(
+      db.data.settings,
+      settingsEncryptionKeyBuffer,
+      TG_BOT_TOKEN,
+      TG_CHAT_ID
+    );
 
-  const resolution = resolveTelegramConfig(
-    db.data.settings,
-    legacyBotToken,
-    legacyChatId,
-    isDisabled
-  );
+    if (metadata.error) {
+      return res.status(409).json({ error: metadata.error });
+    }
 
-  if (!resolution) {
-    return res.json({
-      configured: false,
-      source: "none",
-      disabled: !!isDisabled,
-    });
+    res.json(metadata);
+  } catch (err) {
+    if (err instanceof TelegramConfigError) {
+      return res.status(409).json({ error: "Stored Telegram settings are unreadable; provide a new bot token to replace them" });
+    }
+    console.warn("[TG] metadata resolution failed:", err.message);
+    res.status(500).json({ error: "Unable to resolve Telegram configuration" });
   }
-
-  const decrypted = resolution.source === "dashboard"
-    ? getDecryptedTelegram(db.data.settings, settingsEncryptionKeyBuffer)
-    : null;
-
-  const botToken = decrypted ? decrypted.bot_token : resolution.bot_token;
-  const chatId = decrypted ? decrypted.chat_id : resolution.chat_id;
-
-  if (!botToken || !chatId) {
-    return res.json({
-      configured: false,
-      source: resolution.source,
-      disabled: !!isDisabled,
-    });
-  }
-
-  res.json({
-    configured: true,
-    source: resolution.source,
-    bot_token_masked: maskBotToken(botToken),
-    chat_id: chatId,
-    updated_at: db.data.settings && db.data.settings[TELEGRAM_KEY]
-      ? db.data.settings[TELEGRAM_KEY].updated_at
-      : null,
-  });
 });
 
 app.put("/api/settings/telegram", async (req, res) => {
@@ -896,6 +874,21 @@ app.put("/api/settings/telegram", async (req, res) => {
   const hasExistingDashboardConfig =
     db.data.settings && db.data.settings[TELEGRAM_KEY] && db.data.settings[TELEGRAM_KEY].ciphertext;
 
+  if (hasExistingDashboardConfig) {
+    try {
+      resolveEffectiveTelegramConfig(db.data.settings, settingsEncryptionKeyBuffer, TG_BOT_TOKEN, TG_CHAT_ID);
+    } catch (err) {
+      if (err instanceof TelegramConfigError) {
+        if (!finalBotToken) {
+          return res.status(409).json({
+            error: "Stored Telegram settings are unreadable; provide a new bot token to replace them",
+          });
+        }
+      }
+      throw err;
+    }
+  }
+
   if (isDisabled && !finalBotToken && !finalChatId) {
     return res.json({
       configured: false,
@@ -905,9 +898,17 @@ app.put("/api/settings/telegram", async (req, res) => {
   }
 
   if (!finalBotToken && hasExistingDashboardConfig) {
-    const decrypted = getDecryptedTelegram(db.data.settings, settingsEncryptionKeyBuffer);
-    if (decrypted && decrypted.bot_token) {
-      finalBotToken = decrypted.bot_token;
+    try {
+      const decrypted = resolveEffectiveTelegramConfig(db.data.settings, settingsEncryptionKeyBuffer, "", "");
+      if (decrypted && decrypted.bot_token) {
+        finalBotToken = decrypted.bot_token;
+      }
+    } catch {
+      if (!finalBotToken) {
+        return res.status(409).json({
+          error: "Stored Telegram settings are unreadable; provide a new bot token to replace them",
+        });
+      }
     }
   }
 
@@ -952,7 +953,7 @@ app.put("/api/settings/telegram", async (req, res) => {
   });
 });
 
-app.delete("/api/settings/telegram", (req, res) => {
+app.delete("/api/settings/telegram", async (req, res) => {
   if (!db.data.settings) {
     return res.json({ configured: false, source: "none", disabled: true });
   }
@@ -961,9 +962,12 @@ app.delete("/api/settings/telegram", (req, res) => {
     delete db.data.settings[TELEGRAM_KEY];
   }
   db.data.settings[DISABLED_KEY] = true;
-  db.write().then(() => {
-    res.json({ configured: false, source: "none", disabled: true });
-  });
+  try {
+    await db.write();
+  } catch (err) {
+    console.warn("[TG] failed to persist disabled state:", err.message);
+  }
+  res.json({ configured: false, source: "none", disabled: true });
 });
 
 app.post("/api/settings/telegram/test", async (req, res) => {
@@ -971,78 +975,66 @@ app.post("/api/settings/telegram/test", async (req, res) => {
     return res.status(500).json({ error: "SETTINGS_ENCRYPTION_KEY is not configured" });
   }
 
-  const isDisabled = db.data.settings && db.data.settings[DISABLED_KEY];
-  const legacyBotToken = process.env.TG_BOT_TOKEN || "";
-  const legacyChatId = process.env.TG_CHAT_ID || "";
-
-  const resolution = resolveTelegramConfig(
-    db.data.settings,
-    legacyBotToken,
-    legacyChatId,
-    isDisabled
-  );
-
-  if (!resolution) {
-    return res.status(400).json({ error: "Telegram is not configured" });
-  }
-
-  const botToken = resolution.source === "dashboard"
-    ? (() => {
-        const decrypted = getDecryptedTelegram(db.data.settings, settingsEncryptionKeyBuffer);
-        return decrypted ? decrypted.bot_token : null;
-      })()
-    : resolution.bot_token;
-
-  const chatId = resolution.source === "dashboard"
-    ? (() => {
-        const decrypted = getDecryptedTelegram(db.data.settings, settingsEncryptionKeyBuffer);
-        return decrypted ? decrypted.chat_id : null;
-      })()
-    : resolution.chat_id;
-
-  if (!botToken || !chatId) {
-    return res.status(400).json({ error: "Telegram is not fully configured" });
-  }
-
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 10000);
-
   try {
-    const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text: "Smart Lock Telegram integration test successful.",
-      }),
-      signal: controller.signal,
-    });
+    const config = resolveEffectiveTelegramConfig(
+      db.data.settings,
+      settingsEncryptionKeyBuffer,
+      TG_BOT_TOKEN,
+      TG_CHAT_ID
+    );
 
-    clearTimeout(timeout);
-
-    const data = await response.json();
-
-    if (data.ok) {
-      return res.json({ ok: true });
+    if (!config) {
+      return res.status(400).json({ error: "Telegram is not configured" });
     }
 
-    return res.status(400).json({
-      ok: false,
-      error: "Telegram rejected the configured credentials or chat ID",
-    });
-  } catch (err) {
-    clearTimeout(timeout);
-    if (err.name === "AbortError") {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+
+    try {
+      const url = `https://api.telegram.org/bot${config.bot_token}/sendMessage`;
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: config.chat_id,
+          text: "Smart Lock Telegram integration test successful.",
+        }),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeout);
+
+      const data = await response.json();
+
+      if (data.ok) {
+        return res.json({ ok: true });
+      }
+
       return res.status(400).json({
         ok: false,
-        error: "Telegram test timed out",
+        error: "Telegram rejected the configured credentials or chat ID",
+      });
+    } catch (err) {
+      clearTimeout(timeout);
+      if (err.name === "AbortError") {
+        return res.status(400).json({
+          ok: false,
+          error: "Telegram test timed out",
+        });
+      }
+      return res.status(400).json({
+        ok: false,
+        error: "Telegram test failed: network error",
       });
     }
-    return res.status(400).json({
-      ok: false,
-      error: "Telegram test failed: network error",
-    });
+  } catch (err) {
+    if (err instanceof TelegramConfigError) {
+      return res.status(409).json({
+        error: "Stored Telegram settings are unreadable; provide a new bot token to replace them",
+      });
+    }
+    console.warn("[TG] test endpoint failed:", err.message);
+    res.status(500).json({ error: "Unable to resolve Telegram configuration" });
   }
 });
 
@@ -1086,4 +1078,4 @@ export function closeTestRuntime() {
   if (typeof mqttClient.end === "function") mqttClient.end();
 }
 
-export { app, db };
+export { app, db, sendTelegramMessage, sendTelegramPhoto };
