@@ -788,6 +788,13 @@ static void start_provisioning(void)
 
     char setup_code[32] = {0};
     if (!load_setup_code(setup_code, sizeof(setup_code)) || strlen(setup_code) < WIFI_PROV_AP_PASS_MIN) {
+#ifdef WIFI_PROV_SETUP_CODE
+        if (strlen(WIFI_PROV_SETUP_CODE) >= WIFI_PROV_AP_PASS_MIN) {
+            strncpy(setup_code, WIFI_PROV_SETUP_CODE, sizeof(setup_code) - 1);
+            save_setup_code(setup_code);
+            ESP_LOGI(TAG, "Using configured default setup code");
+        } else
+#endif
         if (!generate_setup_code(setup_code, sizeof(setup_code)) || !save_setup_code(setup_code)) {
             ESP_LOGE(TAG, "Failed to generate/save setup code, cannot start provisioning AP");
             provisioning_active = false;
@@ -796,8 +803,9 @@ static void start_provisioning(void)
                 prov_event_group = NULL;
             }
             return;
+        } else {
+            ESP_LOGI(TAG, "Generated new setup code for provisioning AP");
         }
-        ESP_LOGI(TAG, "Generated new setup code for provisioning AP");
     } else {
         ESP_LOGI(TAG, "Using existing setup code");
     }
@@ -882,6 +890,12 @@ static void start_provisioning(void)
         httpd_register_uri_handler(prov_httpd, &get_uri);
         httpd_register_uri_handler(prov_httpd, &post_uri);
         ESP_LOGI(TAG, "Provisioning HTTP server started on port 80");
+        ESP_LOGI(TAG, "==================================================");
+        ESP_LOGI(TAG, "  WIFI PROVISIONING ACTIVE");
+        ESP_LOGI(TAG, "  SSID:        %s", ap_ssid);
+        ESP_LOGI(TAG, "  SETUP CODE:  %s", setup_code);
+        ESP_LOGI(TAG, "  PORTAL URL:  http://192.168.4.1");
+        ESP_LOGI(TAG, "==================================================");
     } else {
         ESP_LOGE(TAG, "Failed to start provisioning HTTP server");
     }

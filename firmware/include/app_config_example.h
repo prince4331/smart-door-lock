@@ -63,6 +63,8 @@ extern char g_device_id[32];
 #define OTA_URL             ""
 
 #define WIFI_PROV_SSID_PREFIX "SmartLock-Setup-"
+#define WIFI_PROV_SETUP_CODE  "SETUP12345"
+#define WIFI_PROV_AP_PASS_MIN 8
 #define WIFI_PROV_PASS_MIN   8
 #define WIFI_PROV_TIMEOUT_MS (10 * 60 * 1000)
 #define WIFI_STA_FAIL_DELAY_MS 60000
