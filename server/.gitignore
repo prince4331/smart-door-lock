@@ -1,5 +1,8 @@
 node_modules/
 .env
+.env.local
+data/
+data.*.db
 npm-debug.log
 yarn-error.log
 .DS_Store

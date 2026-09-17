@@ -584,6 +584,12 @@
       elements.viewerMode.checked = false;
       sessionStorage.removeItem('dashAccessToken');
       closeSSE();
+      // Drop the private snapshot too: its object URL must not survive logout.
+      if (camObjectUrl) {
+        URL.revokeObjectURL(camObjectUrl);
+        camObjectUrl = null;
+        if (elements.camStream) elements.camStream.removeAttribute('src');
+      }
       disableControlButtons();
       elements.loginOverlay.classList.add('show');
       elements.conn.textContent = 'Login required';
@@ -704,7 +710,13 @@
       }
     }
 
-    function updateCamera(ts) {
+    // Camera media is private: the snapshot is fetched through the tokened
+    // API and turned into a short-lived object URL, so the token never lands
+    // in the URL, the DOM, or a log line. The previous object URL is revoked
+    // each time so a stale frame cannot be re-read after logout.
+    let camObjectUrl = null;
+
+    async function updateCamera(ts) {
       if (!ts) return;
       camLastUpdate = ts;
       elements.camStatus.textContent = new Date(ts).toLocaleTimeString();
@@ -714,17 +726,37 @@
       setCameraLoading(true);
       elements.camPlaceholder.classList.remove('show');
 
-      const img = elements.camStream;
-      img.onload = () => {
-        setCameraLoading(false);
-        setCameraError('');
-      };
-      img.onerror = () => {
+      try {
+        const res = await fetch('/api/cam/latest', { headers: authHeaders() });
+        if (res.status === 401) { handleUnauthorized(); return; }
+        if (res.status === 404) {
+          setCameraLoading(false);
+          setCameraError('No camera image available');
+          elements.camPlaceholder.classList.add('show');
+          return;
+        }
+        if (!res.ok) throw new Error(`unexpected status ${res.status}`);
+
+        const blob = await res.blob();
+        if (camObjectUrl) URL.revokeObjectURL(camObjectUrl);
+        camObjectUrl = URL.createObjectURL(blob);
+
+        const img = elements.camStream;
+        img.onload = () => {
+          setCameraLoading(false);
+          setCameraError('');
+        };
+        img.onerror = () => {
+          setCameraLoading(false);
+          setCameraError('Failed to load image');
+          elements.camPlaceholder.classList.add('show');
+        };
+        img.src = camObjectUrl;
+      } catch (e) {
         setCameraLoading(false);
         setCameraError('Failed to load image');
         elements.camPlaceholder.classList.add('show');
-      };
-      img.src = `/cam/latest.jpg?ts=${ts}`;
+      }
     }
 
     async function loadCameraStatus() {
@@ -745,7 +777,7 @@
     }
 
     function refreshCamera() {
-      updateCamera(Date.now());
+      updateCamera(camLastUpdate || Date.now());
     }
 
     async function loadHistory() {
