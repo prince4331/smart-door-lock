@@ -554,6 +554,71 @@ actuated. The test server was shut down after probing.
 3. **Merge of the audit branch into `main`.** Not performed, by design,
    because local and `smart` histories share no ancestor. Confirm before
    merging.
+
+---
+
+## Phase 0 status — implemented on `fix/phase-0-security-containment`
+
+This section was added after Phase 0 containment work. It records what changed
+relative to the findings above. The finding text above is unchanged and still
+describes the **baseline** state at `01d91cf`.
+
+| Finding | Baseline severity | Phase 0 status |
+| --- | --- | --- |
+| SEC-01 — Live credentials committed | Critical | **Not fixable in code.** Rotation remains an owner action. `server/render.yaml:13-15` broker host/username is pre-existing and was recorded under SEC-01 in a prior commit. |
+| SEC-02 — Shared device credentials | High | **Partially mitigated.** Camera upload now requires its own `CAM_UPLOAD_TOKEN`, which the dashboard token cannot satisfy. Per-device identity is still Phase 2. |
+| SEC-03 — Auth disabled when token unset | High | **Fixed.** Startup refuses to listen when `DASH_TOKEN` or `CAM_UPLOAD_TOKEN` is missing/empty/whitespace-only; every missing or wrong credential returns 401. |
+| SEC-04 — Read/stream endpoints open | Critical | **Fixed.** All `/api/*` except `/api/health` require a token; `/api/cam/upload` requires the separate device token. |
+| SEC-05 — Non-constant-time PIN compare | Medium | **Out of scope for Phase 0** — firmware-side, unchanged. |
+| SEC-06 — Command replay in 300 s window | High | **Out of scope for Phase 0** — requires idempotency keys (API-01). |
+| SEC-07 — Plain HTTP camera transport | High | **Fixed at the backend boundary.** `CAM_SNAPSHOT_URL` / `CAM_STREAM_URL` must use `https://` when set, enforced at startup. Camera-side TLS is firmware work. |
+| SEC-08 — No accounts/roles | Medium | **Out of scope** — Phase 2. |
+| API-03 — Rate limiting bypassed | Medium | **Partially fixed.** Only `/api/health` is exempt; `DISABLE_RATE_LIMIT` is honoured only when `NODE_ENV` is `development` or `test`. |
+| UI-01 — Viewer mode advisory | Medium | **Partially fixed.** The server now enforces the token on every read/control route; UI-side viewer gating is cosmetic only. |
+| UI-02 — No offline/error states | Medium | **Partially fixed.** SSE reconnects with bounded exponential backoff (cap 30 s); a 401 clears the stored token and returns to login. |
+| GOV-01 — Nested `server/.git` | Medium | **Fixed.** `server/.git` was backed up out of the tree and removed from the working path; commits now land in the canonical repo only. |
+| GOV-02 — Two remotes, unrelated histories | Medium | **Fixed.** Remotes normalized to the canonical repository. The `iotlabesp` history-exposure question remains an owner decision (blocker 2). |
+| GOV-04 — Zero tests | High | **Fixed.** 35 assertions in `server/test/security.test.mjs` (Node built-in runner, placeholder tokens, inert MQTT stub). |
+| GOV-05 — Vulnerable dependencies | Medium | **Fixed.** `npm audit fix` (no `--force`) — 11 packages changed, 1 removed, 0 advisories remaining. |
+
+### What Phase 0 deliberately did not do
+
+- No user accounts, JWT, or session management.
+- No device provisioning or per-device identity.
+- No firmware changes of any kind.
+- No database migration; the lowdb store and its on-disk format are unchanged.
+- No UI redesign beyond the auth-flow changes needed to keep streaming working.
+- No merge into `main` — the branch is pushed for review only.
+
+### Open owner actions that code cannot close
+
+These remain with the project owner and are the reason the branch is
+review-only:
+
+1. **Credential rotation (SEC-01).** The Wi-Fi password, MQTT broker account,
+   Telegram bot token, and default PIN were committed to the public
+   `iotlabesp` history. Rotation is out of band; no commit can revoke a
+   published secret.
+2. **Repository consolidation (GOV-01/GOV-02).** `server/.git` is out of the
+   tree and the remotes are normalized, but the owner still decides which
+   repository is canonical and whether the audit branch merges into `main`.
+
+### Verification evidence collected on the branch
+
+| Check | Command | Result |
+| --- | --- | --- |
+| Test suite | `npm test` | PASS — 35 assertions, 0 failures, exit 0 |
+| Dependency advisories | `npm audit` | PASS — 0 vulnerabilities |
+| Live startup, valid config | `node src/index.js` | PASS — boots and listens |
+| Live startup, missing token | `node src/index.js` (no `DASH_TOKEN`) | PASS — refuses to listen, non-zero exit |
+| Control endpoint, no token | `POST /api/command` | PASS — 401 |
+| Read endpoint, no token | `GET /api/state` | PASS — 401 (was 200 at baseline) |
+| SSE, no token | `GET /api/stream` | PASS — 401 (was open at baseline) |
+| Dashboard verification | `node test/dashboard-phase0.mjs` | PASS — 13/13 checks |
+| Broker isolation | server log scan | PASS — no `Connected to mqtt://` line during any test or probe |
+
+No production broker, database, or hardware was contacted during Phase 0. All
+probes used placeholder tokens and an unreachable loopback broker address.
 4. **Firmware build verification.** No ESP-IDF/PlatformIO toolchain is
    installed in this environment, so firmware compiles were not verified.
    Confirm whether a toolchain should be installed for Phase 1 of the

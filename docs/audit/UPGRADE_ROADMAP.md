@@ -1,13 +1,17 @@
 # Upgrade Roadmap — Smart Door Lock
 
 Audit date: 2026-09-16
-Baseline commit: `b0893d7` (branch `audit/full-codebase-baseline-20260916`)
+Baseline commit: `01d91cf` (branch `audit/full-codebase-baseline-20260916`)
 
-**This roadmap is documentation only. Nothing below has been implemented.**
-It is derived from `AUDIT_REPORT.md` and `FEATURE_COMPLETENESS_MATRIX.md`.
+**This roadmap is documentation only, except where a status column says
+otherwise.** It is derived from `AUDIT_REPORT.md` and
+`FEATURE_COMPLETENESS_MATRIX.md`.
 
 Phases are ordered by risk: earlier phases remove active exposure; later
 phases add capability. Do not skip Phase 0.
+
+Status legend: **DONE** = implemented on branch `fix/phase-0-security-containment`
+and covered by `server/test/security.test.mjs`. Anything unmarked remains open.
 
 ---
 
@@ -16,17 +20,45 @@ phases add capability. Do not skip Phase 0.
 Goal: remove live exposure and close the open-door paths. No architecture
 changes; purely containment.
 
-| # | Action | Addresses | Effort |
-|---|--------|-----------|--------|
-| 0.1 | Rotate Wi-Fi password, MQTT broker account, Telegram bot token, and the default PIN on every device | SEC-01, SEC-02 | Owner action, out of band |
-| 0.2 | Keep `firmware/include/app_config.h` and camera credentials out of source control via the `.gitignore` rule added by this audit; onboard via `app_config_example.h` | SEC-01 | Done in baseline |
-| 0.3 | Make `authenticateAccessToken` fail closed when `DASH_TOKEN` is unset | SEC-03 | Small |
-| 0.4 | Add authentication to `/api/state`, `/api/events`, `/api/stream`, and the camera proxy routes; remove them from the rate-limit `skip` list | SEC-04 | Small |
-| 0.5 | Require `https://` plus a camera token for `CAM_SNAPSHOT_URL` / `CAM_STREAM_URL` | SEC-07 | Small |
-| 0.6 | Decide canonical repository; treat `iotlabesp` history as exposed and rotate accordingly | GOV-01, GOV-02 | Decision |
+| # | Action | Addresses | Effort | Status |
+|---|--------|-----------|--------|--------|
+| 0.1 | Rotate Wi-Fi password, MQTT broker account, Telegram bot token, and the default PIN on every device | SEC-01, SEC-02 | Owner action, out of band | **Open — owner action, cannot be done in code** |
+| 0.2 | Keep `firmware/include/app_config.h` and camera credentials out of source control via the `.gitignore` rule added by this audit; onboard via `app_config_example.h` | SEC-01 | Done in baseline | **DONE in baseline** |
+| 0.3 | Make `authenticateAccessToken` fail closed when `DASH_TOKEN` is unset | SEC-03 | Small | **DONE** |
+| 0.4 | Add authentication to `/api/state`, `/api/events`, `/api/stream`, and the camera proxy routes; remove them from the rate-limit `skip` list | SEC-04 | Small | **DONE** |
+| 0.5 | Require `https://` plus a camera token for `CAM_SNAPSHOT_URL` / `CAM_STREAM_URL` | SEC-07 | Small | **PARTIAL — https:// enforced at startup; camera token required on upload** |
+| 0.6 | Decide canonical repository; treat `iotlabesp` history as exposed and rotate accordingly | GOV-01, GOV-02 | Decision | **Remotes normalized; history-exposure decision still open (see AUDIT_REPORT SEC-01)** |
+
+Phase 0 additionally delivered, beyond the original list:
+
+- Separate mandatory `CAM_UPLOAD_TOKEN` for `POST /api/cam/upload`, which the
+  dashboard token cannot satisfy (SEC-02 separation).
+- 401 for every missing/invalid credential, never 403, so the UI can
+  distinguish "log in again" from "you may not do this".
+- Constant-time token comparison.
+- Dashboard replaced the headerless `EventSource` stream with a `fetch()`-based
+  SSE client sending `Authorization: Bearer`, plus bounded exponential backoff
+  and a 401 → login-state transition (UI-02, 5.1).
+- `DISABLE_RATE_LIMIT` is now honoured only in development/test; the limiter
+  always runs otherwise (API-03, pulled forward from Phase 4.5).
+- 35 automated regression assertions in `server/test/security.test.mjs`, plus
+  dashboard and live-startup probes in `server/test/`.
+- Dependency advisories remediated with `npm audit fix` (no `--force`), 11
+  packages changed, 1 removed, 0 remaining (GOV-05, pulled forward from 1.5).
+- Unused `API_KEY` machine-to-machine path and its dead `authenticateApiKey`
+  middleware were removed, along with the now-unreferenced `API_KEY` entry in
+  `server/.env.example`. No route depended on them.
+- Repository normalized in this phase: `server/.git` nested repository moved
+  out of the tree, remotes reduced to the canonical
+  `github.com/prince4331/smart-door-lock`, and the branch
+  `fix/phase-0-security-containment` is the only branch carrying these
+  changes. Never merged into `main`; review only.
 
 Exit criteria: no credential readable from any branch; no unauthenticated
 `/api/*` response other than a health probe; control endpoints fail closed.
+
+**Status:** the code-side exit criteria are met. The remaining blocker is 0.1,
+credential rotation, which is an owner action outside the repository.
 
 ---
 
@@ -40,8 +72,8 @@ Goal: make the codebase reproducibly buildable so later fixes are verifiable.
 | 1.2 | Resolve the `app_config.h` bootstrap: fresh clone must compile by copying the template | REL-05 | Small |
 | 1.3 | Remove dead `ca_cert.h` or wire it in; explicitly attach the CA bundle and verify broker TLS | REL-05 | Small |
 | 1.4 | Add `LICENSE`, `CIRCUIT_DIAGRAM.md`, `SERVER_SETUP.md` or drop the README references | GOV-03 | Small |
-| 1.5 | Commit a dependency lockfile and run `npm audit fix` | GOV-05 | Small |
-| 1.6 | Decide the fate of `server/.git` (plain subdirectory vs. separate repo) | GOV-01 | Decision |
+| 1.5 | Commit a dependency lockfile and run `npm audit fix` | GOV-05 | Small | **DONE — lockfile committed, `npm audit fix` applied, 0 advisories remain** |
+| 1.6 | Decide the fate of `server/.git` (plain subdirectory vs. separate repo) | GOV-01 | Decision | **DONE — `server/.git` backed up out of the tree and removed from the working path; commits now land in the canonical repo** |
 
 Exit criteria: both firmware projects compile; backend installs and boots
 from a clean clone; dependency advisories triaged.
@@ -97,8 +129,8 @@ Goal: a trustworthy control and data plane.
 | 4.2 | Replace lowdb with a real database; add schema, migrations, transactions, retention, backup | API-02 | Large |
 | 4.3 | Append-only signed audit trail | SEC-08 | Medium |
 | 4.4 | Tighten CORS to the dashboard origin; remove duplicate static mount | API-04 | Small |
-| 4.5 | Separate read-path rate limiting; disallow `DISABLE_RATE_LIMIT` in production | API-03 | Small |
-| 4.6 | Request validation and length limits across all endpoints; SSE auth on connect | SEC-04 | Medium |
+| 4.5 | Separate read-path rate limiting; disallow `DISABLE_RATE_LIMIT` in production | API-03 | Small | **PARTIAL — `DISABLE_RATE_LIMIT` is now dev/test-only; separate read-path limits still open** |
+| 4.6 | Request validation and length limits across all endpoints; SSE auth on connect | SEC-04 | Medium | **PARTIAL — SSE is authenticated on connect; general length limits still open** |
 | 4.7 | Timezone-aware timestamps; notification delivery retries | Matrix | Medium |
 
 Exit criteria: duplicate commands are deduped; state store is durable and
@@ -112,7 +144,7 @@ Goal: a UI that reports the truth and fails visibly.
 
 | # | Action | Addresses | Effort |
 |---|--------|-----------|--------|
-| 5.1 | Offline banner, SSE reconnection with backoff, command retry queue | UI-02 | Medium |
+| 5.1 | Offline banner, SSE reconnection with backoff, command retry queue | UI-02 | Medium | **PARTIAL — SSE reconnect with bounded backoff + 401 handling shipped in Phase 0** |
 | 5.2 | Explicit loading/empty/error states, including stale-camera indicator | UI-02, UI-03 | Medium |
 | 5.3 | Server-side role enforcement reflected in the UI; remove client-only gating | UI-01 | Medium |
 | 5.4 | Accidental-unlock prevention (server-side confirm/dedupe), duress/emergency-access UX | UI-01, Matrix | Medium |
@@ -130,7 +162,7 @@ Goal: changes are gated by automated checks.
 
 | # | Action | Addresses | Effort |
 |---|--------|-----------|--------|
-| 6.1 | Unit tests for command validation, auth middleware, idempotency, replay rejection | GOV-04 | Medium |
+| 6.1 | Unit tests for command validation, auth middleware, idempotency, replay rejection | GOV-04 | Medium | **PARTIAL — command validation and auth middleware are covered; idempotency/replay still open** |
 | 6.2 | Integration tests: API → MQTT → firmware command path against a broker test container | GOV-04 | Medium |
 | 6.3 | CI workflow (lint, test, `npm audit`, firmware build on both targets) | GOV-04 | Medium |
 | 6.4 | Hardware-in-the-loop or simulator harness for lock state transitions | GOV-04 | Large |

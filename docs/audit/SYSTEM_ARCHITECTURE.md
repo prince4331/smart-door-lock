@@ -3,6 +3,9 @@
 Audit date: 2026-09-16
 Baseline commit: `b0893d7` (branch `audit/full-codebase-baseline-20260916`)
 
+Trust-boundary and flow descriptions were updated 2026-09-17 to match the
+Phase 0 containment work on branch `fix/phase-0-security-containment`.
+
 This document describes what is **implemented**, not what is documented. For
 documented-vs-implemented gaps see `FEATURE_COMPLETENESS_MATRIX.md`.
 
@@ -13,8 +16,8 @@ documented-vs-implemented gaps see `FEATURE_COMPLETENESS_MATRIX.md`.
                      │  Browser dashboard                            │
                      │  server/public/index.html (static SPA)        │
                      └───────┬───────────────────────┬──────────────┘
-                             │ HTTP (REST)             │ SSE
-                             │ X-Access-Token          │ /api/stream
+                             │ HTTP (REST)             │ SSE over fetch()
+                             │ Authorization: Bearer   │ Authorization: Bearer
                              ▼                         ▼
                      ┌──────────────────────────────────────────────┐
                      │  Node/Express backend                         │
@@ -51,10 +54,12 @@ documented-vs-implemented gaps see `FEATURE_COMPLETENESS_MATRIX.md`.
 
 1. Dashboard collects a shared access token from the user, stored in
    `sessionStorage` (`public/index.html:571`, `:586`).
-2. `POST /api/command` with `X-Access-Token` header
-   (`server/src/index.js:530`-`561`).
-3. Middleware `authenticateAccessToken` compares the header to `DASH_TOKEN`
-   using `crypto.timingSafeEqual` (`server/src/index.js:407`-`424`).
+2. `POST /api/command` with an `Authorization: Bearer <token>` header
+   (the legacy `X-Access-Token` header is still accepted).
+3. The `/api/*` router middleware runs `authenticateAccessToken`, which
+   compares the token to `DASH_TOKEN` using SHA-256 plus
+   `crypto.timingSafeEqual`, so an unknown credential cannot be
+   distinguished from a missing one.
 4. On success the server builds
    `"<COMMAND>|<nonce>|<timestamp>"` where nonce is
    `Date.now()*1000 + random*1000` and timestamp is Unix seconds
@@ -102,13 +107,13 @@ documented-vs-implemented gaps see `FEATURE_COMPLETENESS_MATRIX.md`.
 
 | # | Boundary | Mechanism (as implemented) | Verdict |
 |---|----------|---------------------------|---------|
-| TB1 | Internet → Backend | Static shared `DASH_TOKEN`; constant-time compare | Single shared secret, no users |
+| TB1 | Internet → Backend | Static shared `DASH_TOKEN`; constant-time compare; startup fails closed if unset | Single shared secret, no users |
 | TB2 | Backend → Device | MQTT over TLS 8883; command carries nonce+timestamp | Replay window 300 s, nonce not tracked |
-| TB3 | Browser → Backend | `X-Access-Token` on control endpoints only | Read endpoints unauthenticated (see AUDIT_REPORT SEC-04) |
-| TB4 | Camera → Backend | `X-Cam-Token` on upload when `CAM_TOKEN` set | Optional — skipped if unset |
+| TB3 | Browser → Backend | `Authorization: Bearer` on every `/api/*` route except `/api/health` | Closed by Phase 0 (was SEC-04) |
+| TB4 | Camera → Backend | `CAM_UPLOAD_TOKEN` as Bearer or `X-Cam-Token` on `/api/cam/upload`; mandatory | Closed by Phase 0 (was optional and fail-open) |
 | TB5 | Device → Broker | MQTT username/password from `app_config.h` | Shared across all devices (see SEC-02) |
 | TB6 | Backend → Telegram | Bot token in firmware + server env | Token committed publicly (SEC-01) |
-| TB7 | Browser ↔ SSE | `/api/stream` | No auth on SSE stream (SEC-04) |
+| TB7 | Browser ↔ SSE | `/api/stream` requires `Authorization: Bearer`; the browser client uses `fetch()`, not `EventSource` | Closed by Phase 0 (was SEC-04) |
 
 ## 4. External services and dependencies
 
