@@ -182,6 +182,7 @@
     button:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 14px 28px rgba(0,0,0,0.35); }
     button:disabled { opacity: 0.5; cursor: not-allowed; }
     button.btn-danger { background: linear-gradient(135deg, rgba(239, 68, 68, 0.95), rgba(185, 28, 28, 0.9)); color: #fff; }
+    button.btn-danger.holding { background: linear-gradient(135deg, rgba(239, 68, 68, 0.6), rgba(185, 28, 28, 0.5)); }
     button.btn-warn { background: linear-gradient(135deg, rgba(245, 158, 11, 0.95), rgba(217, 119, 6, 0.9)); color: #1f1405; }
     button.btn-secondary { background: rgba(16, 22, 30, 0.92); color: var(--text); border: 1px solid rgba(255,255,255,0.2); }
 
@@ -373,7 +374,12 @@
           <h2>Command Center</h2>
           <div class="cmd-grid">
             <button id="btnLock" onclick="sendCommand('LOCK')">LOCK</button>
-            <button id="btnUnlock" class="btn-danger" onclick="sendCommand('UNLOCK')">UNLOCK</button>
+            <button id="btnUnlock" class="btn-danger"
+                    onmousedown="startHoldUnlock(event)"
+                    ontouchstart="startHoldUnlock(event)"
+                    onmouseup="cancelHoldUnlock()"
+                    ontouchend="cancelHoldUnlock()"
+                    onmouseleave="cancelHoldUnlock()">HOLD TO UNLOCK</button>
             <button id="btnSilence" class="btn-warn" onclick="sendCommand('SILENCE')">SILENCE</button>
             <button id="btnArm" class="btn-secondary" onclick="sendCommand('ARM')">ARM</button>
           </div>
@@ -394,16 +400,6 @@
             <button onclick="sendCommand('MODE_HOME')" class="btn-secondary">HOME</button>
             <button onclick="sendCommand('MODE_AWAY')" class="btn-secondary">AWAY</button>
             <button onclick="sendCommand('MODE_NIGHT')" class="btn-secondary">NIGHT</button>
-          </div>
-          <div style="margin-top: 10px;">
-            <input type="password" id="pinInput" placeholder="New PIN (4-10 digits)" style="width: 100%; padding: 10px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.16); border-radius: 8px; color: var(--text); font-family: monospace;" />
-            <div style="display: flex; gap: 8px; margin-top: 8px;">
-              <button class="btn-secondary" onclick="updatePin()">Update PIN</button>
-            </div>
-            <div id="pinMsg" style="margin-top: 6px; font-size: 12px; color: var(--muted);"></div>
-            <div style="margin-top: 6px; font-size: 11px; color: var(--muted);">
-              Default PIN: 1069 • '#' submit • '*' clear • 'C' lock when unlocked
-            </div>
           </div>
         </div>
 
@@ -557,13 +553,11 @@
       alarmStatusText: document.getElementById('alarmStatusText'),
       pirStatusText: document.getElementById('pirStatusText'),
       fireStatusText: document.getElementById('fireStatusText'),
-        camStream: document.getElementById('camStream'),
-        camPlaceholder: document.getElementById('camPlaceholder'),
-        camSpinner: document.getElementById('camSpinner'),
-        camError: document.getElementById('camError'),
-        camStatus: document.getElementById('camStatus'),
-      pinInput: document.getElementById('pinInput'),
-      pinMsg: document.getElementById('pinMsg')
+      camStream: document.getElementById('camStream'),
+      camPlaceholder: document.getElementById('camPlaceholder'),
+      camSpinner: document.getElementById('camSpinner'),
+      camError: document.getElementById('camError'),
+      camStatus: document.getElementById('camStatus'),
     };
 
     // Authenticated request helper. Every /api/* call except /api/health sends
@@ -913,10 +907,12 @@
       const item = document.createElement('div');
       item.className = 'event-item';
       const badgeClass = ['intrusion', 'fire', 'door', 'command', 'system'].includes(type) ? type : 'system';
+      const escapedMessage = escapeHtml(message);
+      const escapedDetails = details ? escapeHtml(details) : '';
       item.innerHTML = `
-        <span class="event-badge ${badgeClass}">${type}</span>
-        ${message}
-        ${details ? `<div style="margin-top: 4px; color: var(--muted);">${details}</div>` : ''}
+        <span class="event-badge ${badgeClass}">${escapeHtml(type)}</span>
+        ${escapedMessage}
+        ${escapedDetails ? `<div style="margin-top: 4px; color: var(--muted);">${escapedDetails}</div>` : ''}
         <div class="event-time">${eventTime.toLocaleTimeString()}</div>
       `;
       elements.eventFeed.insertBefore(item, elements.eventFeed.firstChild);
@@ -1104,9 +1100,9 @@
       elements.historyTable.innerHTML = filtered.slice(0, 100).map(e => `
         <tr>
           <td>${e.time.toLocaleString()}</td>
-          <td><span class="event-badge ${e.type}">${e.type}</span></td>
-          <td>${e.event}</td>
-          <td style="color: var(--muted);">${e.details || '-'}</td>
+          <td><span class="event-badge ${e.type}">${escapeHtml(e.type)}</span></td>
+          <td>${escapeHtml(e.event)}</td>
+          <td style="color: var(--muted);">${escapeHtml(e.details || '-')}</td>
         </tr>
       `).join('');
     }
@@ -1116,6 +1112,40 @@
     }
 
     elements.searchBox.addEventListener('input', updateHistoryTable);
+
+    const HOLD_UNLOCK_MS = 2000;
+    let holdUnlockTimer = null;
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function startHoldUnlock(event) {
+      event.preventDefault();
+      const btn = document.getElementById('btnUnlock');
+      if (!btn || btn.disabled) return;
+      btn.classList.add('holding');
+      btn.textContent = 'HOLD TO CONFIRM...';
+      holdUnlockTimer = setTimeout(() => {
+        btn.classList.remove('holding');
+        btn.textContent = 'HOLD TO UNLOCK';
+        sendCommand('UNLOCK');
+      }, HOLD_UNLOCK_MS);
+    }
+
+    function cancelHoldUnlock() {
+      const btn = document.getElementById('btnUnlock');
+      if (holdUnlockTimer) {
+        clearTimeout(holdUnlockTimer);
+        holdUnlockTimer = null;
+      }
+      if (btn) {
+        btn.classList.remove('holding');
+        btn.textContent = 'HOLD TO UNLOCK';
+      }
+    }
 
     function sendCommand(cmd) {
       if (VIEWER_MODE || !ACCESS_TOKEN) {
@@ -1168,36 +1198,14 @@
         addEvent('system', `Command ${cmd} failed`, e.message);
         setTimeout(() => {
           elements.cmdProgress.classList.remove('active');
-          buttons.forEach(id => document.getElementById(id).disabled = false);
+          buttons.forEach(id => {
+            const btn = document.getElementById(id);
+            if (btn) {
+              btn.disabled = false;
+              if (id === 'btnUnlock') btn.textContent = 'HOLD TO UNLOCK';
+            }
+          });
         }, 2000);
-      });
-    }
-
-    function updatePin() {
-      if (VIEWER_MODE || !ACCESS_TOKEN) {
-        elements.pinMsg.textContent = 'Login required to update PIN.';
-        return;
-      }
-      const pin = (elements.pinInput.value || '').trim();
-      if (!/^[0-9]{4,10}$/.test(pin)) {
-        elements.pinMsg.textContent = 'PIN must be 4-10 digits.';
-        return;
-      }
-      elements.pinMsg.textContent = 'Updating...';
-      const headers = authHeaders({ 'Content-Type': 'application/json' });
-      fetch('/api/pin', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ pin })
-      }).then(r => {
-        if (r.status === 401) { handleUnauthorized(); throw new Error('Unauthorized'); }
-        if (!r.ok) throw new Error('HTTP ' + r.status);
-        return r.json();
-      }).then(() => {
-        elements.pinMsg.textContent = 'PIN updated.';
-        elements.pinInput.value = '';
-      }).catch((e) => {
-        elements.pinMsg.textContent = 'Update failed: ' + e.message;
       });
     }
 
@@ -1210,7 +1218,13 @@
       
       setTimeout(() => {
         elements.cmdProgress.classList.remove('active');
-        buttons.forEach(id => document.getElementById(id).disabled = false);
+        buttons.forEach(id => {
+          const btn = document.getElementById(id);
+          if (btn) {
+            btn.disabled = false;
+            if (id === 'btnUnlock') btn.textContent = 'HOLD TO UNLOCK';
+          }
+        });
       }, 2000);
       
       const cmdLabel = ack.command ? `Command ${ack.command}` : 'Command';

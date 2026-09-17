@@ -60,7 +60,7 @@ delete process.env.CAM_TOKEN;
 delete process.env.API_KEY;
 delete process.env.DOTENV_CONFIG_PATH;
 
-const { app, validateServerConfig, validateConfig, getMqttPublished, clearMqttPublished, closeTestRuntime } =
+const { app, validateServerConfig, validateConfig, generateNonce, setNonceGenerator, getMqttPublished, clearMqttPublished, closeTestRuntime } =
   await import("../src/index.js");
 
 let server = null;
@@ -222,13 +222,6 @@ describe("control endpoints require a token (SEC-03)", () => {
     });
     assert.equal(res.status, 401);
   });
-
-  test("POST /api/pin rejects an anonymous request", async () => {
-    const res = await request("/api/pin", {
-      method: "POST", ctype: "application/json", body: JSON.stringify({ pin: "1234" }),
-    });
-    assert.equal(res.status, 401);
-  });
 });
 
 describe("camera upload uses a separate, mandatory device token", () => {
@@ -288,17 +281,6 @@ describe("authorised requests succeed", () => {
     assert.equal(published.length, 1);
     assert.match(published[0].payload, /^LOCK\|/);
   });
-
-  test("a valid PIN publishes a SET_PIN command", async () => {
-    const res = await request("/api/pin", {
-      method: "POST", bearer: DASH_TOKEN, ctype: "application/json",
-      body: JSON.stringify({ pin: "123456" }),
-    });
-    assert.equal(res.status, 200);
-    const published = getMqttPublished();
-    assert.equal(published.length, 1);
-    assert.match(published[0].payload, /^SET_PIN:123456\|/);
-  });
 });
 
 describe("command validation still applies after a valid token", () => {
@@ -309,13 +291,28 @@ describe("command validation still applies after a valid token", () => {
     });
     assert.equal(res.status, 400);
   });
+});
 
-  test("a malformed PIN is rejected with 400", async () => {
-    const res = await request("/api/pin", {
-      method: "POST", bearer: DASH_TOKEN, ctype: "application/json",
-      body: JSON.stringify({ pin: "12" }),
-    });
-    assert.equal(res.status, 400);
+describe("replay protection rejects duplicate nonces", () => {
+  test("a replayed command with the same nonce is rejected with 409", async () => {
+    const fixedNonce = 1234567890123456;
+    setNonceGenerator(() => fixedNonce);
+
+    try {
+      const first = await request("/api/command", {
+        method: "POST", bearer: DASH_TOKEN, ctype: "application/json",
+        body: JSON.stringify({ command: "LOCK" }),
+      });
+      assert.equal(first.status, 200);
+
+      const second = await request("/api/command", {
+        method: "POST", bearer: DASH_TOKEN, ctype: "application/json",
+        body: JSON.stringify({ command: "LOCK" }),
+      });
+      assert.equal(second.status, 409);
+    } finally {
+      setNonceGenerator(undefined);
+    }
   });
 });
 

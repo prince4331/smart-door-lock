@@ -10,12 +10,14 @@ services:
       - key: PORT
         value: 8080
       - key: MQTT_BROKER
-        value: mqtts://7073d14c632e4e68b0ec38acf49d0c37.s1.eu.hivemq.cloud:8883
+        sync: false
       - key: MQTT_USERNAME
-        value: princeofhell069
+        sync: false
       - key: MQTT_PASSWORD
         sync: false
       - key: DASH_TOKEN
+        sync: false
+      - key: CAM_UPLOAD_TOKEN
         sync: false
       - key: RATE_LIMIT_MAX
         value: 20

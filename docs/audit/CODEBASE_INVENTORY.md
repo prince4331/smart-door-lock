@@ -32,7 +32,7 @@ starts).
 │   │   ├── servo_control.h
 │   │   └── ca_cert.h             Declares cert; NOT included by any source
 │   ├── src/
-│   │   ├── main.c                Wi-Fi, MQTT, keypad, sensors, OTA, state
+│   │   ├── main.c                Wi-Fi, MQTT, sensors, OTA, state
 │   │   └── servo_control.c       LEDC PWM servo driver
 │   ├── platformio.ini            PlatformIO project for lock firmware
 │   ├── CMakeLists.txt            ESP-IDF build definition

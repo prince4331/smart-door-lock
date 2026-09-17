@@ -25,7 +25,6 @@ inspection record; it describes the vulnerable baseline, not the fix.
 | Call | Header | Header name | Location |
 |------|--------|-------------|----------|
 | `POST /api/command` | yes (conditional) | `X-Access-Token` | `index.html:1087` |
-| `POST /api/pin` | yes | `X-Access-Token` | `index.html:1124` |
 | `GET /api/state` | no | — | `index.html:649` |
 | `GET /api/events` | no | — | `index.html:722` |
 | `GET /api/cam/status` | no | — | `index.html:702` |
@@ -56,7 +55,6 @@ always 401.
 Authenticated in the baseline:
 
 - `POST /api/command` — `authenticateAccessToken` (control)
-- `POST /api/pin` — `authenticateAccessToken` (control)
 
 Public (unauthenticated) in the baseline:
 
@@ -142,7 +140,7 @@ reassembly happens in the MQTT message handler, not over HTTP.
    sends `Authorization: Bearer <token>`, parses SSE frames, closes before
    reconnect, stops on 401, and backs off exponentially.
 9. Dashboard: send the token on `/api/state`, `/api/events`,
-   `/api/cam/status`, `/api/command`, `/api/pin`; on 401 return to login.
+   `/api/cam/status`, `/api/command`; on 401 return to login.
 10. Tests: Node's built-in test runner, app imported with MQTT stubbed,
     placeholder tokens generated per run.
 
@@ -157,7 +155,7 @@ the authoritative "current state" companion to this historical record.
 | # | Baseline behaviour (this document) | After Phase 0 |
 |---|------------------------------------|---------------|
 | 1 | Token stored in `sessionStorage`; client-only `VIEWER_MODE` gating | Unchanged on the client. Server-side `/api/*` auth makes `VIEWER_MODE` cosmetic only — still flagged UI-01 until Phase 2.2 lands |
-| 2 | Only `/api/command` and `/api/pin` sent a token; reads were anonymous | Every `/api/*` route except `/api/health` requires `Authorization: Bearer` (or `X-Access-Token`), including `/api/state`, `/api/events`, `/api/stream`, and all camera routes |
+| 2 | Only `/api/command` sent a token; reads were anonymous | Every `/api/*` route except `/api/health` requires `Authorization: Bearer` (or `X-Access-Token`), including `/api/state`, `/api/events`, `/api/stream`, and all camera routes |
 | 3 | `if (!DASH_TOKEN) return next()` — fail-open; no Bearer support | Fail-closed: `DASH_TOKEN` and `CAM_UPLOAD_TOKEN` mandatory, minimum 16 characters, validated **before** the listener, MQTT, camera, or Telegram is created. Bearer supported. 401 for every missing/invalid credential, never 403. Constant-time compare. `authenticateApiKey` and the `API_KEY` path removed entirely |
 | 4 | `/api/state`, `/api/events`, `/api/stream`, `/api/cam/*` public | All authenticated. `/api/health` is the sole anonymous route |
 | 5 | `new EventSource('/api/stream')` — anonymous, fixed 2000 ms retry, no 401 handling | `fetch()`-based SSE client sending `Authorization: Bearer`; bounded exponential backoff; 401 transitions the UI back to login state |

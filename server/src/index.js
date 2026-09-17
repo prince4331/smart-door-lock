@@ -95,6 +95,14 @@ export function validateServerConfig() {
   });
 }
 
+let nonceGenerator = () => Date.now() * 1000 + Math.floor(Math.random() * 1000);
+export function generateNonce() {
+  return nonceGenerator();
+}
+export function setNonceGenerator(fn) {
+  nonceGenerator = fn || (() => Date.now() * 1000 + Math.floor(Math.random() * 1000));
+}
+
 const PORT = process.env.PORT || 8080;
 const MQTT_BROKER = process.env.MQTT_BROKER || "mqtt://localhost:1883";
 const MQTT_CLIENT_ID = process.env.MQTT_CLIENT_ID || "smartlock-server";
@@ -192,6 +200,18 @@ const MQTT_TOPIC_CAM_CHUNK = "smartlock/cam/chunk";
 
 const sseClients = new Set();
 
+const usedNonces = new Set();
+const NONCE_TTL_MS = 5 * 60 * 1000; // 5 minutes, matches firmware window
+
+function pruneOldNonces() {
+  const cutoff = Date.now() - NONCE_TTL_MS;
+  for (const nonce of usedNonces) {
+    if (nonce < cutoff) {
+      usedNonces.delete(nonce);
+    }
+  }
+}
+
 // Runtime camera media lives OUTSIDE the public static root, so a snapshot can
 // never be fetched without a dashboard token. Only the authenticated
 // /api/cam/latest route below serves it.
@@ -283,7 +303,7 @@ function normalizeAlertPayload(data) {
   let mappedType = "system";
   if (upper.includes("FIRE")) mappedType = "fire";
   else if (upper.includes("REED") || upper.includes("DOOR") || upper.includes("LOCK") || upper.includes("UNLOCK")) mappedType = "door";
-  else if (upper.includes("PIR") || upper.includes("MOTION") || upper.includes("ALARM") || upper.includes("CAM_CAPTURE") || upper.includes("PIR_DWELL") || upper.includes("WRONG_PIN") || upper.includes("FORCED")) mappedType = "intrusion";
+  else if (upper.includes("PIR") || upper.includes("MOTION") || upper.includes("ALARM") || upper.includes("CAM_CAPTURE") || upper.includes("PIR_DWELL") || upper.includes("FORCED")) mappedType = "intrusion";
   base.source_type = sourceType;
   base.type = mappedType;
   base.message = base.message || base.detail || String(sourceType);
@@ -319,11 +339,6 @@ async function handleAlertSideEffects(alertPayload) {
 
   if (src.includes("UNLOCK")) {
     await sendTelegramMessage("Door unlocked");
-    return;
-  }
-
-  if (src.includes("WRONG_PIN")) {
-    await sendTelegramMessage("ALERT: Too many wrong PIN attempts");
     return;
   }
 
@@ -642,28 +657,6 @@ app.get("/api/events", (req, res) => {
   res.json(db.data.events.slice(0, limit));
 });
 
-app.post("/api/pin", (req, res) => {
-  const { pin } = req.body;
-  if (!pin || typeof pin !== "string") {
-    return res.status(400).json({ error: "pin required (string)" });
-  }
-  if (!/^[0-9]{4,10}$/.test(pin)) {
-    return res.status(400).json({ error: "pin must be 4-10 digits" });
-  }
-
-  const nonce = Date.now() * 1000 + Math.floor(Math.random() * 1000);
-  const timestamp = Math.floor(Date.now() / 1000);
-  const signedCmd = `SET_PIN:${pin}|${nonce}|${timestamp}`;
-
-  mqttClient.publish(MQTT_TOPIC_CMD, signedCmd, { qos: 1 }, (err) => {
-    if (err) {
-      console.error("[API] MQTT publish failed:", err);
-      return res.status(500).json({ error: "mqtt publish failed" });
-    }
-    res.json({ sent: true });
-  });
-});
-
 app.get("/api/cam/status", (_req, res) => {
   res.json({ last_update: camLastUpdate });
 });
@@ -735,8 +728,15 @@ app.post("/api/command", (req, res) => {
   }
 
   // Add nonce and timestamp for replay protection
-  const nonce = Date.now() * 1000 + Math.floor(Math.random() * 1000);
+  const nonce = generateNonce();
   const timestamp = Math.floor(Date.now() / 1000);
+
+  pruneOldNonces();
+  if (usedNonces.has(nonce)) {
+    return res.status(409).json({ error: "duplicate command (replay detected)" });
+  }
+  usedNonces.add(nonce);
+
   const signedCmd = `${command}|${nonce}|${timestamp}`;
 
   mqttClient.publish(MQTT_TOPIC_CMD, signedCmd, { qos: 1 }, (err) => {

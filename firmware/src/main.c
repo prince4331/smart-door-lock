@@ -73,15 +73,12 @@ static bool pir_dwell_triggered = false;
 static bool pir_tamper_alerted = false;
 static bool reed_tamper_alerted = false;
 
-#define KEYPAD_MAX_LEN 10
-static char keypad_buffer[KEYPAD_MAX_LEN + 1];
-static int keypad_pos = 0;
-static int64_t keypad_lockout_until_ms = 0;
-static char lock_password[KEYPAD_MAX_LEN + 1] = DEFAULT_LOCK_PASSWORD;
+#define NONCE_CACHE_SIZE 64
+static int64_t nonce_cache[NONCE_CACHE_SIZE];
+static int nonce_cache_index = 0;
 
 static nvs_handle_t nvs_storage_handle;
 static uint32_t boot_count = 0;
-static uint32_t failed_attempts = 0;
 
 static TaskHandle_t sensor_task_handle = NULL;
 static TaskHandle_t control_task_handle = NULL;
@@ -99,8 +96,6 @@ static void wifi_init_sta(void);
 static void initialize_sntp(void);
 static void mqtt_app_start(void);
 static void gpio_init_all(void);
-static void keypad_init(void);
-static char scan_keypad(void);
 static void configure_input(gpio_num_t pin, bool pullup, bool pulldown);
 static void load_nvs_state(void);
 static void save_nvs_state(void);
@@ -131,6 +126,20 @@ static bool is_command_word(const char *cmd)
 
 static int64_t now_ms(void) {
     return esp_timer_get_time() / 1000;
+}
+
+static bool is_nonce_seen(int64_t nonce) {
+    for (int i = 0; i < NONCE_CACHE_SIZE; i++) {
+        if (nonce_cache[i] == nonce) {
+            return true;
+        }
+    }
+    return false;
+}
+
+static void record_nonce(int64_t nonce) {
+    nonce_cache[nonce_cache_index] = nonce;
+    nonce_cache_index = (nonce_cache_index + 1) % NONCE_CACHE_SIZE;
 }
 
 static void wifi_event_handler(void* arg, esp_event_base_t event_base,
@@ -339,59 +348,6 @@ static void gpio_init_all(void)
 
 }
 
-static void keypad_init(void)
-{
-    gpio_config_t io_conf = {
-        .pin_bit_mask = ((1ULL << PIN_KP_R1) | (1ULL << PIN_KP_R2) | (1ULL << PIN_KP_R3) | (1ULL << PIN_KP_R4)),
-        .mode = GPIO_MODE_OUTPUT,
-        .pull_up_en = GPIO_PULLUP_DISABLE,
-        .pull_down_en = GPIO_PULLDOWN_DISABLE,
-        .intr_type = GPIO_INTR_DISABLE,
-    };
-    gpio_config(&io_conf);
-
-    io_conf.pin_bit_mask = ((1ULL << PIN_KP_C1) | (1ULL << PIN_KP_C2) | (1ULL << PIN_KP_C3) | (1ULL << PIN_KP_C4));
-    io_conf.mode = GPIO_MODE_INPUT;
-    io_conf.pull_down_en = GPIO_PULLDOWN_ENABLE;
-    gpio_config(&io_conf);
-
-    gpio_set_level(PIN_KP_R1, 0);
-    gpio_set_level(PIN_KP_R2, 0);
-    gpio_set_level(PIN_KP_R3, 0);
-    gpio_set_level(PIN_KP_R4, 0);
-
-}
-
-static char scan_keypad(void)
-{
-    const gpio_num_t rows[] = {PIN_KP_R1, PIN_KP_R2, PIN_KP_R3, PIN_KP_R4};
-    const gpio_num_t cols[] = {PIN_KP_C1, PIN_KP_C2, PIN_KP_C3, PIN_KP_C4};
-    const char keys[4][4] = {
-        {'1', '2', '3', 'A'},
-        {'4', '5', '6', 'B'},
-        {'7', '8', '9', 'C'},
-        {'*', '0', '#', 'D'}
-    };
-
-    for (int r = 0; r < 4; r++) {
-        gpio_set_level(rows[r], 1);
-        vTaskDelay(pdMS_TO_TICKS(1));
-        for (int c = 0; c < 4; c++) {
-            if (gpio_get_level(cols[c]) == 1) {
-                char key = keys[r][c];
-                while (gpio_get_level(cols[c]) == 1) {
-                    vTaskDelay(pdMS_TO_TICKS(10));
-                }
-                gpio_set_level(rows[r], 0);
-                return key;
-            }
-        }
-        gpio_set_level(rows[r], 0);
-    }
-
-    return '\0';
-}
-
 static void load_nvs_state(void)
 {
     esp_err_t err = nvs_open(NVS_NAMESPACE, NVS_READWRITE, &nvs_storage_handle);
@@ -409,15 +365,6 @@ static void load_nvs_state(void)
         lock_state = (lock_state_t)saved_state;
     }
 
-    nvs_get_u32(nvs_storage_handle, "failed_att", &failed_attempts);
-
-    size_t pass_len = sizeof(lock_password);
-    if (nvs_get_str(nvs_storage_handle, NVS_KEY_PASSWORD, lock_password, &pass_len) != ESP_OK) {
-        strncpy(lock_password, DEFAULT_LOCK_PASSWORD, sizeof(lock_password) - 1);
-        lock_password[sizeof(lock_password) - 1] = '\0';
-        nvs_set_str(nvs_storage_handle, NVS_KEY_PASSWORD, lock_password);
-    }
-
     nvs_commit(nvs_storage_handle);
 
 }
@@ -425,8 +372,6 @@ static void load_nvs_state(void)
 static void save_nvs_state(void)
 {
     nvs_set_u8(nvs_storage_handle, NVS_KEY_LOCK_STATE, (uint8_t)lock_state);
-    nvs_set_u32(nvs_storage_handle, "failed_att", failed_attempts);
-    nvs_set_str(nvs_storage_handle, NVS_KEY_PASSWORD, lock_password);
     nvs_commit(nvs_storage_handle);
 }
 
@@ -444,14 +389,14 @@ static void publish_state(void)
     snprintf(payload, sizeof(payload),
              "{\"device_id\":\"%s\",\"lock_state\":\"%s\",\"security_mode\":\"%s\","
              "\"sensors\":{\"pir\":%s,\"reed\":%s,\"fire\":%s},"
-             "\"alarm\":%s,\"alarm_silenced\":%s,\"boot_count\":%lu,\"failed_attempts\":%lu,\"timestamp\":%lld}",
+             "\"alarm\":%s,\"alarm_silenced\":%s,\"boot_count\":%lu,\"timestamp\":%lld}",
              g_device_id, lock_str[lock_state], mode_str[current_mode],
              pir_active ? "true" : "false",
              reed_active ? "true" : "false",
              fire_active ? "true" : "false",
              alarm_active ? "true" : "false",
              alarm_silenced ? "true" : "false",
-             boot_count, failed_attempts, (long long)now);
+             boot_count, (long long)now);
 
     esp_mqtt_client_publish(mqtt_client, MQTT_TOPIC_STATE, payload, 0, 1, 0);
 }
@@ -536,6 +481,13 @@ static bool validate_command(const char *cmd)
         return false;
     }
 
+    int64_t nonce_val = atoll(nonce);
+    if (is_nonce_seen(nonce_val)) {
+        ESP_LOGW(TAG, "Command replay detected: nonce %lld already used", (long long)nonce_val);
+        return false;
+    }
+    record_nonce(nonce_val);
+
     if (strcmp(command, "LOCK") != 0 &&
         strcmp(command, "UNLOCK") != 0 &&
         strcmp(command, "SILENCE") != 0 &&
@@ -544,9 +496,7 @@ static bool validate_command(const char *cmd)
         strcmp(command, "MODE_HOME") != 0 &&
         strcmp(command, "MODE_AWAY") != 0 &&
         strcmp(command, "MODE_NIGHT") != 0) {
-        if (strncmp(command, "SET_PIN:", 8) != 0) {
-            return false;
-        }
+        return false;
     }
 
     return true;
@@ -589,17 +539,6 @@ static void handle_command(const char *cmd)
         alarm_silenced = false;
         publish_state();
         publish_command_ack(command, "ok", "armed");
-    } else if (strncmp(command, "SET_PIN:", 8) == 0) {
-        const char *new_pin = command + 8;
-        if (strlen(new_pin) >= 4 && strlen(new_pin) <= KEYPAD_MAX_LEN) {
-            strncpy(lock_password, new_pin, sizeof(lock_password) - 1);
-            lock_password[sizeof(lock_password) - 1] = '\0';
-            save_nvs_state();
-            publish_state();
-            publish_command_ack("SET_PIN", "ok", "pin updated");
-        } else {
-            publish_command_ack("SET_PIN", "rejected", "invalid length");
-        }
     } else if (strcmp(command, "OTA") == 0) {
         publish_command_ack("OTA", "ok", "starting");
         perform_ota_update();
@@ -623,7 +562,6 @@ static void sensor_task(void *pvParameters)
 
     while (1) {
         int64_t now = now_ms();
-        bool keypad_locked_out = now < keypad_lockout_until_ms;
         int pir_raw = (gpio_get_level(PIN_PIR) == PIR_ACTIVE_LEVEL) ? 1 : 0;
         int reed_raw = (gpio_get_level(PIN_REED) == REED_ACTIVE_LEVEL) ? 1 : 0;
         int fire_raw = (gpio_get_level(PIN_FIRE) == FIRE_ACTIVE_LEVEL) ? 1 : 0;
@@ -741,49 +679,6 @@ static void sensor_task(void *pvParameters)
                 reed_tamper_alerted = true;
                 publish_alert("TAMPER", "Reed sensor stuck open");
                 publish_state();
-            }
-        }
-
-        if (!keypad_locked_out) {
-            char key = scan_keypad();
-            if (key != '\0') {
-                gpio_set_level(PIN_BUZZER, 1);
-                vTaskDelay(pdMS_TO_TICKS(30));
-                gpio_set_level(PIN_BUZZER, 0);
-                if (key == '#') {
-                    keypad_buffer[keypad_pos] = '\0';
-                    if (strcmp(keypad_buffer, lock_password) == 0) {
-                        failed_attempts = 0;
-                        if (lock_state == LOCK_STATE_LOCKED) {
-                            apply_lock_state(LOCK_STATE_UNLOCKED, "Keypad unlock", true);
-                        } else {
-                            apply_lock_state(LOCK_STATE_LOCKED, "Keypad lock", true);
-                        }
-                    } else {
-                        failed_attempts++;
-                        save_nvs_state();
-                        if (failed_attempts >= WRONG_ATTEMPTS_MAX) {
-                            keypad_lockout_until_ms = now + KEYPAD_LOCKOUT_MS;
-                            alarm_active = true;
-                            alarm_silenced = false;
-                            alarm_start_ms = now;
-                            publish_alert("ALARM", "Too many wrong PIN attempts");
-                            publish_state();
-                        } else {
-                            for (int i = 0; i < 3; i++) {
-                                gpio_set_level(PIN_BUZZER, 1);
-                                vTaskDelay(pdMS_TO_TICKS(100));
-                                gpio_set_level(PIN_BUZZER, 0);
-                                vTaskDelay(pdMS_TO_TICKS(100));
-                            }
-                        }
-                    }
-                    keypad_pos = 0;
-                } else if (key == '*') {
-                    keypad_pos = 0;
-                } else if (keypad_pos < KEYPAD_MAX_LEN) {
-                    keypad_buffer[keypad_pos++] = key;
-                }
             }
         }
 
@@ -970,7 +865,6 @@ void app_main(void)
 
     gpio_init_all();
     ESP_ERROR_CHECK(servo_control_init());
-    keypad_init();
 
     command_queue = xQueueCreate(10, sizeof(command_t));
 

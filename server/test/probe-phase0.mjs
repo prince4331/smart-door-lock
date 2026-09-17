@@ -135,10 +135,8 @@ process.on("SIGINT", () => { killChild(); process.exit(130); });
   // they time out. The assertion is that the request was authorised and
   // reached the handler, which a TIMEOUT demonstrates.
   await check("POST /api/command Bearer (authorised, no broker)", "TIMEOUT", await P("/api/command", { ...B(DASH), method: "POST", body: '{"command":"LOCK"}', ctype: "application/json" }));
-  await check("POST /api/pin Bearer (authorised, no broker)", "TIMEOUT", await P("/api/pin", { ...B(DASH), method: "POST", body: '{"pin":"1234"}', ctype: "application/json" }));
   await check("POST /api/command anonymous", 401, await P("/api/command", { method: "POST", body: '{"command":"LOCK"}', ctype: "application/json" }));
   await check("POST /api/command invalid command", 400, await P("/api/command", { ...B(DASH), method: "POST", body: '{"command":"DELETE"}', ctype: "application/json" }));
-  await check("POST /api/pin malformed pin", 400, await P("/api/pin", { ...B(DASH), method: "POST", body: '{"pin":"12"}', ctype: "application/json" }));
 
   console.log("\n== Camera upload: separate, mandatory device token ==");
   await check("POST /api/cam/upload anonymous", 401, await P("/api/cam/upload", { method: "POST", body: "abc", ctype: "image/jpeg" }));

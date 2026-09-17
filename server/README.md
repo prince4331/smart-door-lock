@@ -42,8 +42,6 @@ The backend validates required secrets before starting its listener and external
 | `DELETE /api/settings/telegram` | `DASH_TOKEN` | Remove stored Telegram settings |
 | `POST /api/settings/telegram/test` | `DASH_TOKEN` | Send a harmless test message |
 
-`POST /api/pin` is not part of the current API. The camera firmware does not use an HTTP upload, snapshot, or stream URL; camera media follows the MQTT command flow described below.
-
 ## Camera flow
 
 1. The authenticated dashboard or presence logic asks the backend for a capture.

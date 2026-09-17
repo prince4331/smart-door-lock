@@ -132,10 +132,10 @@ ESP32-CAM (independent)
 ## High Findings
 
 ### HIGH-01 — Documentation/implementation drift: keypad removal
-- **Files:** `firmware/src/main.c:342-393`, `firmware/include/app_config.h:30-36,76-80,95-102`, `server/src/index.js:645-665`, `server/public/index.html:399-407,1176-1200`, `docs/audit/FEATURE_COMPLETENESS_MATRIX.md:17`, `docs/audit/SYSTEM_ARCHITECTURE.md:45`, `firmware/README.md:7`
-- **Evidence:** Documentation claims keypad is removed. Executable code shows full keypad implementation: GPIO initialization, 4x4 scanner, PIN buffer, validation, lockout, `SET_PIN` command, NVS storage, dashboard PIN UI, backend `/api/pin` endpoint.
-- **Impact:** The system is NOT in the state documentation claims. A damaged keypad still has its GPIOs configured and scanned, potentially causing electrical issues or unexpected behavior.
-- **Recommendation:** Remove keypad code from firmware, remove `/api/pin` from backend, remove PIN UI from dashboard.
+- **Status:** Fixed in Phase 1
+- **Files (original):** `firmware/src/main.c:342-393`, `firmware/include/app_config.h:30-36,76-80,95-102`, `server/src/index.js:645-665`, `server/public/index.html:399-407,1176-1200`, `docs/audit/FEATURE_COMPLETENESS_MATRIX.md:17`, `docs/audit/SYSTEM_ARCHITECTURE.md:45`, `firmware/README.md:7`
+- **Evidence (original):** Documentation claimed keypad was removed but executable code showed full keypad implementation: GPIO initialization, 4x4 scanner, PIN buffer, validation, lockout, `SET_PIN` command, NVS storage, dashboard PIN UI, backend `/api/pin` endpoint.
+- **Fix applied:** Removed keypad GPIO init, scanner, PIN buffer, lockout, `SET_PIN` handler, `/api/pin` endpoint, PIN UI, and related NVS fields. Added hold-to-unlock UX and nonce-based replay protection.
 
 ### HIGH-02 — Documentation/implementation drift: Telegram dashboard settings
 - **Files:** `docs/audit/FEATURE_COMPLETENESS_MATRIX.md:53`, `docs/audit/SYSTEM_ARCHITECTURE.md:96-103`, `server/README.md:57`, `server/public/index.html` (no Telegram settings UI found)
