@@ -491,6 +491,16 @@
       </div>
 
       <div class="stack">
+        <div class="card" id="cameraTestCard">
+          <h2>Camera Test</h2>
+          <p style="font-size: 12px; color: var(--muted); margin-bottom: 10px;">
+            Sends the secure CAM_TEST command. Main ESP32 transmits one ASCII '1' over UART. Camera has a 30s cooldown.
+          </p>
+          <button id="btnCamTest" onclick="sendCamTest()" class="btn-secondary" style="width: 100%;">Test Camera</button>
+          <div id="camTestMsg" style="margin-top: 8px; font-size: 12px; display: none;"></div>
+          <div id="camTestCooldown" style="margin-top: 6px; font-size: 12px; color: var(--muted);"></div>
+        </div>
+
         <div class="card">
           <h2>Camera</h2>
           <div class="camera-frame">
@@ -506,7 +516,7 @@
             <button class="btn-secondary" onclick="refreshCamera()">Refresh</button>
           </div>
           <div style="margin-top: 10px; font-size: 11px; color: var(--muted); border-top: 1px solid rgba(255,255,255,0.06); padding-top: 8px;">
-            Automatic camera trigger requires existing serial connection.
+            <div id="camDiag" style="line-height: 1.6;">Camera link: waiting for status...</div>
           </div>
           <div id="camError" class="cam-error"></div>
         </div>
@@ -518,6 +528,45 @@
       </div>
 
       <div class="stack">
+        <div class="card" id="sensorStatusCard">
+          <h2>Hardware Diagnostics</h2>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Signal</th>
+                  <th>Raw</th>
+                  <th>Interpreted</th>
+                </tr>
+              </thead>
+              <tbody id="sensorTable">
+                <tr><td colspan="3" style="text-align: center; color: var(--muted);">Waiting for state...</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="health-grid" style="margin-top: 12px;">
+            <div class="health-metric">
+              <div class="label">red_led</div>
+              <div class="value" id="outRedLed">-</div>
+            </div>
+            <div class="health-metric">
+              <div class="label">green_led</div>
+              <div class="value" id="outGreenLed">-</div>
+            </div>
+            <div class="health-metric">
+              <div class="label">buzzer</div>
+              <div class="value" id="outBuzzer">-</div>
+            </div>
+            <div class="health-metric">
+              <div class="label">presence</div>
+              <div class="value" id="outPresence">-</div>
+            </div>
+          </div>
+          <div id="camUartStatus" style="margin-top: 10px; padding: 8px 10px; background: rgba(0,0,0,0.2); border-radius: 8px; font-size: 12px;">
+            <strong>Camera UART:</strong> <span id="camUartText">unknown</span>
+          </div>
+        </div>
+
         <div class="card">
           <h2>Event History</h2>
           <div class="table-controls">
@@ -623,6 +672,15 @@
       camSpinner: document.getElementById('camSpinner'),
       camError: document.getElementById('camError'),
       camStatus: document.getElementById('camStatus'),
+      sensorTable: document.getElementById('sensorTable'),
+      outRedLed: document.getElementById('outRedLed'),
+      outGreenLed: document.getElementById('outGreenLed'),
+      outBuzzer: document.getElementById('outBuzzer'),
+      outPresence: document.getElementById('outPresence'),
+      camUartText: document.getElementById('camUartText'),
+      camTestMsg: document.getElementById('camTestMsg'),
+      camTestCooldown: document.getElementById('camTestCooldown'),
+      btnCamTest: document.getElementById('btnCamTest'),
     };
 
     // Authenticated request helper. Every /api/* call except /api/health sends
@@ -1038,12 +1096,70 @@
       }
     }
 
+    function formatAge(ts) {
+      if (!ts) return 'never';
+      const s = Math.max(0, Math.round((Date.now() - ts) / 1000));
+      if (s < 60) return s + 's ago';
+      return Math.floor(s / 60) + 'm ' + (s % 60) + 's ago';
+    }
+
+    function showCamTestMessage(msg, type) {
+      if (!elements.camTestMsg) return;
+      elements.camTestMsg.style.display = 'block';
+      elements.camTestMsg.style.color = type === 'error' ? 'var(--danger)' : (type === 'info' ? 'var(--info)' : 'var(--success)');
+      elements.camTestMsg.textContent = msg;
+    }
+
+    async function sendCamTest() {
+      if (VIEWER_MODE || !ACCESS_TOKEN) {
+        alert('Login with a token to test the camera.');
+        return;
+      }
+      if (!confirm('Send secure CAM_TEST? The main ESP32 will transmit one byte to trigger the camera.')) return;
+      showCamTestMessage('Sending CAM_TEST...', 'info');
+      try {
+        const res = await fetch('/api/command', {
+          method: 'POST',
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify({ command: 'CAM_TEST' })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.status === 429) {
+          const wait = Math.ceil((data.retry_after_ms || 30000) / 1000);
+          showCamTestMessage('Camera cooldown active. Wait ' + wait + 's before testing again.', 'error');
+          return;
+        }
+        if (!res.ok) {
+          showCamTestMessage(data.error || 'CAM_TEST failed', 'error');
+          return;
+        }
+        showCamTestMessage('CAM_TEST sent. Watch for flash LED, then image update.', 'success');
+        addEvent('command', 'Command CAM_TEST sent', 'ID: ' + (data.nonce || 'n/a'));
+      } catch (e) {
+        showCamTestMessage('CAM_TEST failed: network error', 'error');
+      }
+    }
+
+    function updateCamDiag(status) {
+      const el = document.getElementById('camDiag');
+      if (!el || !status) return;
+      const fmt = (v) => (v && v.ts) ? new Date(v.ts).toLocaleTimeString() + ' seq=' + (v.seq ?? '-') + ' bytes=' + (v.bytes ?? '-') : 'none';
+      el.textContent = 'Meta: ' + fmt(status.last_meta) + ' | Chunk: ' + fmt(status.last_chunk) +
+        ' | Frame: ' + fmt(status.last_completed) + ' | Cooldown: ' + Math.ceil((status.cooldown_remaining_ms || 0) / 1000) +
+        's | Telegram: ' + (status.telegram_photo ? status.telegram_photo.status : 'n/a');
+      if (elements.camTestCooldown) {
+        const rem = Math.ceil((status.cooldown_remaining_ms || 0) / 1000);
+        elements.camTestCooldown.textContent = rem > 0 ? 'Cooldown: wait ' + rem + 's before next test.' : 'Ready for camera test.';
+      }
+    }
+
     async function loadCameraStatus() {
       try {
         const res = await fetch('/api/cam/status', { headers: authHeaders() });
         if (res.status === 401) { handleUnauthorized(); return; }
         if (!res.ok) return;
         const data = await res.json();
+        updateCamDiag(data);
         if (data.last_update) {
           updateCamera(data.last_update);
         } else if (elements.camPlaceholder) {
@@ -1098,6 +1214,38 @@
         updateCharts();
       } catch (e) {
         suppressUiUpdates = false;
+      }
+    }
+
+    function updateSensorTable(data) {
+      if (!elements.sensorTable) return;
+      const sensors = data && typeof data.sensors === 'object' && data.sensors ? data.sensors : {};
+      const labelFor = (name, interpreted) => {
+        if (interpreted === undefined || interpreted === null) return 'N/A';
+        if (name === 'pir') return interpreted ? 'ACTIVE' : 'CLEAR';
+        if (name === 'reed') return interpreted ? 'OPEN/ACTIVE' : 'CLOSED/CLEAR';
+        return interpreted ? 'FIRE' : 'CLEAR';
+      };
+      const rows = [];
+      for (const name of ['pir', 'reed', 'fire']) {
+        const raw = sensors[name + '_raw'];
+        const interpreted = sensors[name];
+        const rawTxt = (raw === undefined || raw === null) ? 'N/A' : (raw ? 'HIGH' : 'LOW');
+        rows.push('<tr><td>' + escapeHtml(name) + '</td><td>' + escapeHtml(rawTxt) + '</td><td>' + escapeHtml(labelFor(name, interpreted)) + '</td></tr>');
+      }
+      elements.sensorTable.innerHTML = rows.join('');
+      const outputs = data && typeof data.outputs === 'object' && data.outputs ? data.outputs : {};
+      const presence = data && typeof data.presence === 'object' && data.presence ? data.presence : {};
+      const hl = (v) => (v === undefined ? 'N/A' : (v ? 'HIGH' : 'LOW'));
+      if (elements.outRedLed) elements.outRedLed.textContent = hl(outputs.red_led);
+      if (elements.outGreenLed) elements.outGreenLed.textContent = hl(outputs.green_led);
+      if (elements.outBuzzer) elements.outBuzzer.textContent = hl(outputs.buzzer);
+      if (elements.outPresence) elements.outPresence.textContent = (presence.state || 'N/A') + ' / ' + ((presence.threshold_seconds || presence.threshold || 30) + 's');
+      const camera = data && typeof data.camera === 'object' && data.camera ? data.camera : {};
+      if (elements.camUartText) {
+        elements.camUartText.textContent = camera.uart_initialized === true
+          ? 'INITIALIZED, last ' + formatAge(camera.last_trigger_ms) + ', cooldown ' + (camera.cooldown_remaining_ms || 0) + ' ms'
+          : 'NOT INITIALIZED';
       }
     }
 
@@ -1162,6 +1310,8 @@
         elements.fireStatusText.textContent = fire ? 'Fire' : 'OK';
         elements.fireStatusText.className = `status-pill ${fire ? 'danger' : 'ok'}`;
       }
+
+      updateSensorTable(data);
     }
 
     function updateMetrics(metrics) {
@@ -1568,6 +1718,10 @@
         handleCommandAck(msg.payload);
       } else if (msg.type === 'cam' && msg.payload) {
         updateCamera(msg.payload.last_update || msg.ts || Date.now());
+      } else if (msg.type === 'cam_status' && msg.payload) {
+        updateCamDiag(msg.payload);
+      } else if (msg.type === 'presence_settings' && msg.payload) {
+        loadPresenceSettings();
       }
     }
 

@@ -20,6 +20,7 @@
 #include "nvs.h"
 #include "mqtt_client.h"
 #include "driver/gpio.h"
+#include "driver/uart.h"
 #include "esp_timer.h"
 #include "esp_app_desc.h"
 #include "esp_https_ota.h"
@@ -104,6 +105,36 @@ static QueueHandle_t command_queue = NULL;
 
 static int wifi_retry_count = 0;
 static int wifi_backoff_ms = WIFI_BACKOFF_MIN_MS;
+
+#define CAM_UART_NUM UART_NUM_1
+#define CAM_UART_TX_GPIO GPIO_NUM_1
+#define CAM_UART_BAUD 115200
+#define CAM_TRIGGER_COOLDOWN_MS 30000
+static bool cam_uart_initialized = false;
+static int64_t last_cam_trigger_ms = 0;
+
+static void camera_uart_early_init(void)
+{
+    uart_config_t cfg = {
+        .baud_rate = CAM_UART_BAUD,
+        .data_bits = UART_DATA_8_BITS,
+        .parity = UART_PARITY_DISABLE,
+        .stop_bits = UART_STOP_BITS_1,
+        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
+        .source_clk = UART_SCLK_DEFAULT,
+    };
+    if (uart_param_config(CAM_UART_NUM, &cfg) != ESP_OK) {
+        return;
+    }
+    if (uart_set_pin(CAM_UART_NUM, CAM_UART_TX_GPIO, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE) != ESP_OK) {
+        return;
+    }
+    if (uart_driver_install(CAM_UART_NUM, 128, 0, 0, NULL, 0) != ESP_OK) {
+        return;
+    }
+    cam_uart_initialized = true;
+    esp_log_level_set("*", ESP_LOG_WARN);
+}
 
 static bool provisioning_active = false;
 static httpd_handle_t prov_httpd = NULL;
@@ -961,7 +992,7 @@ static void publish_state(void)
 {
     if (!mqtt_connected) return;
 
-    char payload[512];
+    char payload[768];
     time_t now;
     time(&now);
 
@@ -969,17 +1000,39 @@ static void publish_state(void)
     const char *mode_str[] = {"HOME", "AWAY", "NIGHT"};
     const char *pres_str[] = {"IDLE", "PENDING", "CONFIRMED", "CAPTURED", "COOLDOWN"};
 
+    int pir_raw = gpio_get_level(PIN_PIR);
+    int reed_raw = gpio_get_level(PIN_REED);
+    int fire_raw = gpio_get_level(PIN_FIRE);
+    int red_led = gpio_get_level(PIN_LED_RED);
+    int green_led = gpio_get_level(PIN_LED_GREEN);
+    int buzzer = gpio_get_level(PIN_BUZZER);
+    int64_t ms = now_ms();
+    long cam_cool_rem = 0;
+    if (last_cam_trigger_ms > 0) {
+        int64_t elapsed = ms - last_cam_trigger_ms;
+        if (elapsed < CAM_TRIGGER_COOLDOWN_MS) {
+            cam_cool_rem = (long)(CAM_TRIGGER_COOLDOWN_MS - elapsed);
+        }
+    }
+
     snprintf(payload, sizeof(payload),
              "{\"device_id\":\"%s\",\"lock_state\":\"%s\",\"security_mode\":\"%s\","
-             "\"sensors\":{\"pir\":%s,\"reed\":%s,\"fire\":%s},"
-             "\"presence\":{\"state\":\"%s\",\"threshold\":%lu},"
+             "\"sensors\":{\"pir\":%s,\"reed\":%s,\"fire\":%s,\"pir_raw\":%d,\"reed_raw\":%d,\"fire_raw\":%d},"
+             "\"outputs\":{\"red_led\":%d,\"green_led\":%d,\"buzzer\":%d},"
+             "\"presence\":{\"state\":\"%s\",\"threshold\":%lu,\"threshold_seconds\":%lu},"
+             "\"camera\":{\"uart_initialized\":%s,\"last_trigger_ms\":%lld,\"cooldown_remaining_ms\":%ld},"
              "\"alarm\":%s,\"alarm_silenced\":%s,\"boot_count\":%lu,\"timestamp\":%lld}",
              g_device_id, lock_str[lock_state], mode_str[current_mode],
              pir_active ? "true" : "false",
              reed_active ? "true" : "false",
              fire_active ? "true" : "false",
+             pir_raw, reed_raw, fire_raw,
+             red_led, green_led, buzzer,
              pres_str[presence_state],
              (unsigned long)presence_threshold_sec,
+             (unsigned long)presence_threshold_sec,
+             cam_uart_initialized ? "true" : "false",
+             (long long)last_cam_trigger_ms, cam_cool_rem,
              alarm_active ? "true" : "false",
              alarm_silenced ? "true" : "false",
              boot_count, (long long)now);
@@ -1098,7 +1151,8 @@ static bool validate_command(const char *cmd)
         strcmp(command, "MODE_NIGHT") != 0 &&
         strcmp(command, "START_PROVISIONING") != 0 &&
         strcmp(command, "SET_PRESENCE_30") != 0 &&
-        strcmp(command, "SET_PRESENCE_60") != 0) {
+        strcmp(command, "SET_PRESENCE_60") != 0 &&
+        strcmp(command, "CAM_TEST") != 0) {
         return false;
     }
 
@@ -1175,6 +1229,10 @@ static void handle_command(const char *cmd)
         presence_threshold_sec = 60;
         save_presence_threshold(60);
         publish_command_ack(command, "ok", "presence_60");
+        publish_state();
+    } else if (strcmp(command, "CAM_TEST") == 0) {
+        trigger_cam_capture();
+        publish_command_ack(command, "ok", "trigger_sent");
         publish_state();
     }
 }
@@ -1450,25 +1508,30 @@ static void perform_ota_update(void)
 
 static bool camera_trigger_available(void)
 {
-    // No verified hardware serial connection exists between main ESP32 and ESP32-CAM.
-    return false;
+    return cam_uart_initialized;
 }
 
 static void trigger_cam_capture(void)
 {
     if (!camera_trigger_available()) {
-        ESP_LOGW(TAG, "Camera trigger unavailable (no verified hardware serial link)");
+        ESP_LOGW(TAG, "Camera trigger unavailable");
         publish_alert("CAMERA", "CAM_TRIGGER_UNAVAILABLE");
         return;
+    }
+    const char b = '1';
+    int n = uart_write_bytes(CAM_UART_NUM, &b, 1);
+    if (n == 1) {
+        uart_wait_tx_done(CAM_UART_NUM, pdMS_TO_TICKS(100));
+        last_cam_trigger_ms = now_ms();
+        publish_alert("CAMERA", "CAM_TRIGGER_SENT");
+    } else {
+        publish_alert("CAMERA", "CAM_TRIGGER_FAILED");
     }
 }
 
 static void apply_lock_state(lock_state_t new_state, const char *reason, bool notify)
 {
-    if (lock_state == new_state) {
-        return;
-    }
-
+    bool changed = (lock_state != new_state);
     lock_state = new_state;
     if (lock_state == LOCK_STATE_UNLOCKED) {
         ESP_ERROR_CHECK(servo_control_set_unlocked());
@@ -1482,16 +1545,20 @@ static void apply_lock_state(lock_state_t new_state, const char *reason, bool no
         unlock_start_ms = 0;
     }
 
-    save_nvs_state();
+    if (changed) {
+        save_nvs_state();
+    }
     publish_state();
 
-    if (notify && reason && reason[0] != '\0') {
+    if (changed && notify && reason && reason[0] != '\0') {
         publish_alert("LOCK", reason);
     }
 }
 
 void app_main(void)
 {
+    camera_uart_early_init();
+
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
         ESP_ERROR_CHECK(nvs_flash_erase());
@@ -1503,6 +1570,14 @@ void app_main(void)
 
     gpio_init_all();
     ESP_ERROR_CHECK(servo_control_init());
+
+    lock_state = LOCK_STATE_LOCKED;
+    ESP_ERROR_CHECK(servo_control_set_locked());
+    gpio_set_level(PIN_LED_RED, 1);
+    gpio_set_level(PIN_LED_GREEN, 0);
+    gpio_set_level(PIN_BUZZER, 0);
+    unlock_start_ms = 0;
+    save_nvs_state();
 
     command_queue = xQueueCreate(10, sizeof(command_t));
 

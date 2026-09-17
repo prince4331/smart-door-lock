@@ -264,6 +264,35 @@ fs.mkdirSync(camDir, { recursive: true });
 
 const camChunks = new Map();
 const CAM_CHUNK_TTL_MS = 120000;
+const CAM_TEST_COOLDOWN_MS = 30000;
+let camCooldownUntil = 0;
+let camLastMeta = null;
+let camLastChunk = null;
+let camLastCompleted = null;
+let camTestCommand = null;
+let telegramPhoto = { status: "not_attempted", ts: null };
+
+export function getCameraStatus() {
+  return {
+    last_update: camLastUpdate,
+    cooldown_remaining_ms: Math.max(0, camCooldownUntil - Date.now()),
+    last_meta: camLastMeta,
+    last_chunk: camLastChunk,
+    last_completed: camLastCompleted,
+    command: camTestCommand,
+    telegram_photo: telegramPhoto,
+  };
+}
+
+function publishCameraStatus() {
+  broadcast({ type: "cam_status", ts: Date.now(), payload: getCameraStatus() });
+}
+
+function recordCameraCompleted(seq, bytes, source) {
+  camLastUpdate = Date.now();
+  camLastCompleted = { ts: camLastUpdate, seq, bytes, source };
+  publishCameraStatus();
+}
 
 async function sendTelegramMessage(text) {
   try {
@@ -293,6 +322,9 @@ async function sendTelegramMessage(text) {
 }
 
 async function sendTelegramPhoto(caption) {
+  const attempt = { status: "sending", ts: Date.now(), seq: camLastCompleted?.seq ?? null };
+  telegramPhoto = attempt;
+  publishCameraStatus();
   try {
     const config = resolveEffectiveTelegramConfig(
       db.data.settings,
@@ -301,8 +333,14 @@ async function sendTelegramPhoto(caption) {
       process.env.TG_CHAT_ID || ""
     );
 
-    if (!config) return;
-    if (!fs.existsSync(camLatestPath)) return;
+    if (!config) {
+      attempt.status = "not_configured";
+      return;
+    }
+    if (!fs.existsSync(camLatestPath)) {
+      attempt.status = "no_image";
+      return;
+    }
 
     const url = `https://api.telegram.org/bot${config.bot_token}/sendPhoto`;
     const form = new FormData();
@@ -311,13 +349,14 @@ async function sendTelegramPhoto(caption) {
     const data = fs.readFileSync(camLatestPath);
     form.append("photo", new Blob([data], { type: "image/jpeg" }), "latest.jpg");
 
-    const response = await fetch(url, { method: "POST", body: form });
+    const response = await fetch(url, { method: "POST", body: form, signal: AbortSignal.timeout(10000) });
     const result = await response.json();
-    if (!result.ok) {
-      console.warn("[TG] sendPhoto rejected by Telegram");
-    }
-  } catch (err) {
-    console.warn("[TG] sendPhoto failed:", err.message);
+    attempt.status = response.ok && result.ok ? "sent" : "rejected";
+  } catch {
+    attempt.status = "failed";
+  } finally {
+    attempt.ts = Date.now();
+    publishCameraStatus();
   }
 }
 
@@ -328,7 +367,7 @@ async function fetchCameraSnapshot() {
     if (!res.ok) return false;
     const buf = Buffer.from(await res.arrayBuffer());
     fs.writeFileSync(camLatestPath, buf);
-    camLastUpdate = Date.now();
+    recordCameraCompleted(null, buf.length, "snapshot");
     broadcast({ type: "cam", ts: camLastUpdate, payload: { last_update: camLastUpdate } });
     return true;
   } catch (err) {
@@ -423,7 +462,7 @@ if (ENABLE_MQTT) {
   mqttClient.on("error", (err) => console.error("[MQTT] Error", err.message));
 }
 
-mqttClient.on("message", async (topic, payload) => {
+export async function handleMqttMessage(topic, payload) {
   const ts = Date.now();
   const text = payload.toString();
   const parsed = JSON.parseSafe(text);
@@ -457,6 +496,15 @@ mqttClient.on("message", async (topic, payload) => {
     const ackPayload = typeof parsed === "object" && parsed !== null
       ? { ...parsed, last_seen: ts }
       : { raw: parsed, last_seen: ts };
+    if (camTestCommand && ackPayload.command === "CAM_TEST" &&
+        String(ackPayload.nonce) === String(camTestCommand.nonce)) {
+      camTestCommand.ack = {
+        ts,
+        status: typeof ackPayload.status === "string" ? ackPayload.status.slice(0, 128) : "unknown",
+        reason: typeof ackPayload.reason === "string" ? ackPayload.reason.slice(0, 256) : null,
+      };
+      publishCameraStatus();
+    }
     db.data.events.unshift({ ts, topic, payload: ackPayload });
     db.data.events = db.data.events.slice(0, 500);
     await db.write();
@@ -488,8 +536,13 @@ mqttClient.on("message", async (topic, payload) => {
     const seq = Number(parsed.seq);
     const len = Number(parsed.len);
     const chunk = Number(parsed.chunk || 2048);
-    if (!Number.isFinite(seq) || !Number.isFinite(len)) return;
+    if (!Number.isInteger(seq) || seq < 0 || seq > 0xffffffff ||
+        !Number.isInteger(len) || len <= 0 || len > 3 * 1024 * 1024 ||
+        !Number.isInteger(chunk) || chunk <= 0 || chunk > 65535) return;
 
+    camLastMeta = { ts, seq, bytes: len };
+    camCooldownUntil = Math.max(camCooldownUntil, ts + CAM_TEST_COOLDOWN_MS);
+    publishCameraStatus();
     const total = Math.max(1, Math.ceil(len / chunk));
     camChunks.set(seq, {
       seq,
@@ -508,6 +561,9 @@ mqttClient.on("message", async (topic, payload) => {
     const idx = payload.readUInt16BE(4);
     const total = payload.readUInt16BE(6);
     const data = payload.subarray(8);
+    if (!total || idx >= total || !data.length || data.length > 65535) return;
+    camLastChunk = { ts, seq, bytes: data.length, index: idx, total };
+    publishCameraStatus();
 
     let state = camChunks.get(seq);
     if (!state) {
@@ -535,7 +591,7 @@ mqttClient.on("message", async (topic, payload) => {
       }
       const image = Buffer.concat(buffers);
       fs.writeFileSync(camLatestPath, image);
-      camLastUpdate = Date.now();
+      recordCameraCompleted(seq, image.length, "mqtt");
       broadcast({ type: "cam", ts: camLastUpdate, payload: { last_update: camLastUpdate } });
 
       const camEvent = {
@@ -571,6 +627,10 @@ mqttClient.on("message", async (topic, payload) => {
   db.data.events = db.data.events.slice(0, 500); // cap history
   await db.write();
   broadcast({ type: "event", topic, ts, payload: eventPayload });
+}
+
+mqttClient.on("message", (topic, payload) => {
+  handleMqttMessage(topic, payload).catch(() => console.warn("[MQTT] message processing failed"));
 });
 
 // Safe JSON parse helper
@@ -732,7 +792,16 @@ app.get("/api/events", (req, res) => {
 });
 
 app.get("/api/cam/status", (_req, res) => {
-  res.json({ last_update: camLastUpdate });
+  const status = getCameraStatus();
+  res.json({
+    last_update: status.last_update,
+    cooldown_remaining_ms: status.cooldown_remaining_ms,
+    last_meta: status.last_meta,
+    last_chunk: status.last_chunk,
+    last_completed: status.last_completed,
+    command: status.command,
+    telegram_photo: status.telegram_photo,
+  });
 });
 
 // The persisted snapshot. Served only through this authenticated route: the
@@ -776,7 +845,7 @@ app.post("/api/cam/upload", express.raw({ type: ["image/jpeg", "application/octe
   }
 
   fs.writeFileSync(camLatestPath, req.body);
-  camLastUpdate = Date.now();
+  recordCameraCompleted(null, req.body.length, "http");
 
   broadcast({
     type: "cam",
@@ -797,11 +866,17 @@ app.post("/api/command", (req, res) => {
   if (command.length > 64) {
     return res.status(400).json({ error: "command too long" });
   }
-  if (!["LOCK", "UNLOCK", "SILENCE", "ARM", "OTA", "MODE_HOME", "MODE_AWAY", "MODE_NIGHT", "START_PROVISIONING", "SET_PRESENCE_30", "SET_PRESENCE_60"].includes(command)) {
-    return res.status(400).json({ error: "invalid command. Allowed: LOCK, UNLOCK, SILENCE, ARM, OTA, MODE_HOME, MODE_AWAY, MODE_NIGHT, START_PROVISIONING, SET_PRESENCE_30, SET_PRESENCE_60" });
+  if (!["LOCK", "UNLOCK", "SILENCE", "ARM", "OTA", "MODE_HOME", "MODE_AWAY", "MODE_NIGHT", "START_PROVISIONING", "SET_PRESENCE_30", "SET_PRESENCE_60", "CAM_TEST"].includes(command)) {
+    return res.status(400).json({ error: "invalid command. Allowed: LOCK, UNLOCK, SILENCE, ARM, OTA, MODE_HOME, MODE_AWAY, MODE_NIGHT, START_PROVISIONING, SET_PRESENCE_30, SET_PRESENCE_60, CAM_TEST" });
   }
 
-  // Add nonce and timestamp for replay protection
+  const isCamTest = command === "CAM_TEST";
+  if (isCamTest) {
+    const remaining = camCooldownUntil - Date.now();
+    if (remaining > 0) {
+      return res.status(429).json({ error: "camera cooldown active, try again shortly", retry_after_ms: remaining });
+    }
+  }
   const nonce = generateNonce();
   const timestamp = Math.floor(Date.now() / 1000);
 
@@ -813,10 +888,15 @@ app.post("/api/command", (req, res) => {
 
   const signedCmd = `${command}|${nonce}|${timestamp}`;
 
-  mqttClient.publish(MQTT_TOPIC_CMD, signedCmd, { qos: 1 }, (err) => {
+  mqttClient.publish(MQTT_TOPIC_CMD, signedCmd, { qos: 1 }, async (err) => {
     if (err) {
       console.error("[API] MQTT publish failed:", err);
       return res.status(500).json({ error: "mqtt publish failed" });
+    }
+    if (isCamTest) {
+      camTestCommand = { command, nonce, timestamp, ts: Date.now(), ack: null };
+      camCooldownUntil = Math.max(camCooldownUntil, Date.now() + CAM_TEST_COOLDOWN_MS);
+      publishCameraStatus();
     }
     console.log(`[API] Command sent: ${command} (nonce: ${nonce})`);
     res.json({ sent: true, command, nonce, timestamp });
