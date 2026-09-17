@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <time.h>
+#include <ctype.h>
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -23,6 +24,7 @@
 #include "esp_app_desc.h"
 #include "esp_https_ota.h"
 #include "esp_http_client.h"
+#include "esp_http_server.h"
 
 #include "app_config.h"
 #include "servo_control.h"
@@ -92,13 +94,33 @@ static QueueHandle_t command_queue = NULL;
 static int wifi_retry_count = 0;
 static int wifi_backoff_ms = WIFI_BACKOFF_MIN_MS;
 
-static void wifi_init_sta(void);
+static bool provisioning_active = false;
+static httpd_handle_t prov_httpd = NULL;
+static EventGroupHandle_t prov_event_group;
+#define PROV_CRED_RECV_BIT BIT0
+#define PROV_TIMEOUT_BIT BIT1
+
+static esp_event_handler_instance_t instance_any_id = NULL;
+static esp_event_handler_instance_t instance_got_ip = NULL;
+
+static void wifi_init_sta(const char *ssid, const char *pass);
 static void initialize_sntp(void);
 static void mqtt_app_start(void);
+static void mqtt_app_stop(void);
 static void gpio_init_all(void);
 static void configure_input(gpio_num_t pin, bool pullup, bool pulldown);
 static void load_nvs_state(void);
 static void save_nvs_state(void);
+static bool load_wifi_credentials(char *ssid, size_t ssid_len, char *pass, size_t pass_len);
+static bool save_wifi_credentials(const char *ssid, const char *pass);
+static bool load_setup_code(char *code, size_t max_len);
+static bool save_setup_code(const char *code);
+static void generate_setup_code(char *buf, size_t len);
+static void start_provisioning(void);
+static void stop_provisioning(void);
+static void provisioning_task(void *pvParameters);
+static esp_err_t prov_get_handler(httpd_req_t *req);
+static esp_err_t prov_post_handler(httpd_req_t *req);
 static void publish_state(void);
 static void publish_alert(const char *type, const char *detail);
 static void publish_command_ack(const char *command, const char *status, const char *reason);
@@ -159,12 +181,16 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base,
             wifi_backoff_ms = next_backoff > WIFI_BACKOFF_MAX_MS ? WIFI_BACKOFF_MAX_MS : next_backoff;
         } else {
             ESP_LOGE(TAG, "WiFi connection failed after retries");
-            xEventGroupSetBits(wifi_event_group, WIFI_FAIL_BIT);
+            if (wifi_event_group) {
+                xEventGroupSetBits(wifi_event_group, WIFI_FAIL_BIT);
+            }
         }
     } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
         wifi_retry_count = 0;
         wifi_backoff_ms = WIFI_BACKOFF_MIN_MS;
-        xEventGroupSetBits(wifi_event_group, WIFI_CONNECTED_BIT);
+        if (wifi_event_group) {
+            xEventGroupSetBits(wifi_event_group, WIFI_CONNECTED_BIT);
+        }
         esp_wifi_set_ps(WIFI_PS_NONE);
     }
 }
@@ -213,7 +239,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
     }
 }
 
-static void wifi_init_sta(void)
+static void wifi_init_sta(const char *ssid, const char *pass)
 {
     wifi_event_group = xEventGroupCreate();
 
@@ -224,8 +250,6 @@ static void wifi_init_sta(void)
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
 
-    esp_event_handler_instance_t instance_any_id;
-    esp_event_handler_instance_t instance_got_ip;
     ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT, ESP_EVENT_ANY_ID,
                                                         &wifi_event_handler, NULL, &instance_any_id));
     ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT, IP_EVENT_STA_GOT_IP,
@@ -233,16 +257,22 @@ static void wifi_init_sta(void)
 
     wifi_config_t wifi_config = {
         .sta = {
-            .ssid = WIFI_STA_SSID,
-            .password = WIFI_STA_PASS,
+            .ssid = {0},
+            .password = {0},
             .threshold.authmode = WIFI_AUTH_WPA2_PSK,
         },
     };
 
+    if (ssid && ssid[0]) {
+        strncpy((char *)wifi_config.sta.ssid, ssid, sizeof(wifi_config.sta.ssid) - 1);
+    }
+    if (pass && pass[0]) {
+        strncpy((char *)wifi_config.sta.password, pass, sizeof(wifi_config.sta.password) - 1);
+    }
+
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
     ESP_ERROR_CHECK(esp_wifi_start());
-
 }
 
 static void initialize_sntp(void)
@@ -277,7 +307,6 @@ static void initialize_sntp(void)
 
 static void mqtt_app_start(void)
 {
-
     esp_mqtt_client_config_t mqtt_cfg = {
         .broker = {
             .address.uri = MQTT_BROKER_URI,
@@ -315,6 +344,16 @@ static void mqtt_app_start(void)
     ESP_ERROR_CHECK(esp_mqtt_client_start(mqtt_client));
 }
 
+static void mqtt_app_stop(void)
+{
+    if (mqtt_client) {
+        esp_mqtt_client_stop(mqtt_client);
+        esp_mqtt_client_destroy(mqtt_client);
+        mqtt_client = NULL;
+        mqtt_connected = false;
+    }
+}
+
 static void configure_input(gpio_num_t pin, bool pullup, bool pulldown)
 {
     gpio_config_t io_conf = {
@@ -345,7 +384,6 @@ static void gpio_init_all(void)
     gpio_set_level(PIN_BUZZER, 0);
     gpio_set_level(PIN_LED_RED, 1);
     gpio_set_level(PIN_LED_GREEN, 0);
-
 }
 
 static void load_nvs_state(void)
@@ -366,13 +404,491 @@ static void load_nvs_state(void)
     }
 
     nvs_commit(nvs_storage_handle);
-
 }
 
 static void save_nvs_state(void)
 {
     nvs_set_u8(nvs_storage_handle, NVS_KEY_LOCK_STATE, (uint8_t)lock_state);
     nvs_commit(nvs_storage_handle);
+}
+
+static bool load_wifi_credentials(char *ssid, size_t ssid_len, char *pass, size_t pass_len)
+{
+    if (!nvs_storage_handle) {
+        return false;
+    }
+
+    size_t needed = ssid_len;
+    if (nvs_get_str(nvs_storage_handle, NVS_KEY_STA_SSID, ssid, &needed) != ESP_OK) {
+        return false;
+    }
+
+    needed = pass_len;
+    if (nvs_get_str(nvs_storage_handle, NVS_KEY_STA_PASS, pass, &needed) != ESP_OK) {
+        return false;
+    }
+
+    return ssid[0] != '\0';
+}
+
+static bool save_wifi_credentials(const char *ssid, const char *pass)
+{
+    if (!nvs_storage_handle) {
+        return false;
+    }
+
+    esp_err_t err = nvs_set_str(nvs_storage_handle, NVS_KEY_STA_SSID, ssid);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to save SSID: %s", esp_err_to_name(err));
+        return false;
+    }
+
+    err = nvs_set_str(nvs_storage_handle, NVS_KEY_STA_PASS, pass);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to save password: %s", esp_err_to_name(err));
+        return false;
+    }
+
+    err = nvs_commit(nvs_storage_handle);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to commit NVS: %s", esp_err_to_name(err));
+        return false;
+    }
+
+    ESP_LOGI(TAG, "WiFi credentials saved to NVS");
+    return true;
+}
+
+static bool load_setup_code(char *code, size_t max_len)
+{
+    if (!nvs_storage_handle) {
+        return false;
+    }
+
+    size_t needed = max_len;
+    if (nvs_get_str(nvs_storage_handle, NVS_KEY_SETUP_CODE, code, &needed) != ESP_OK) {
+        return false;
+    }
+
+    return code[0] != '\0';
+}
+
+static bool save_setup_code(const char *code)
+{
+    if (!nvs_storage_handle) {
+        return false;
+    }
+
+    esp_err_t err = nvs_set_str(nvs_storage_handle, NVS_KEY_SETUP_CODE, code);
+    if (err != ESP_OK) {
+        return false;
+    }
+
+    return nvs_commit(nvs_storage_handle) == ESP_OK;
+}
+
+static void generate_setup_code(char *buf, size_t len)
+{
+    const char charset[] = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    for (size_t i = 0; i < len - 1; i++) {
+        buf[i] = charset[esp_random() % (sizeof(charset) - 1)];
+    }
+    buf[len - 1] = '\0';
+}
+
+static void prov_test_event_handler(void* arg, esp_event_base_t event_base,
+                                    int32_t event_id, void* event_data)
+{
+    (void)event_data;
+    EventGroupHandle_t test_group = (EventGroupHandle_t)arg;
+    if (!test_group) return;
+
+    if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
+        esp_wifi_connect();
+    } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
+        xEventGroupSetBits(test_group, WIFI_FAIL_BIT);
+    } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
+        xEventGroupSetBits(test_group, WIFI_CONNECTED_BIT);
+    }
+}
+
+static esp_err_t test_sta_connection(const char *ssid, const char *pass)
+{
+    ESP_LOGI(TAG, "Testing STA connection to %s", ssid);
+
+    wifi_config_t wifi_config = {
+        .sta = {
+            .ssid = {0},
+            .password = {0},
+            .threshold.authmode = WIFI_AUTH_WPA2_PSK,
+        },
+    };
+
+    strncpy((char *)wifi_config.sta.ssid, ssid, sizeof(wifi_config.sta.ssid) - 1);
+    if (pass && pass[0]) {
+        strncpy((char *)wifi_config.sta.password, pass, sizeof(wifi_config.sta.password) - 1);
+    }
+
+    EventGroupHandle_t test_group = xEventGroupCreate();
+    if (!test_group) {
+        return ESP_FAIL;
+    }
+
+    esp_event_handler_instance_t test_instance_any = NULL;
+    esp_event_handler_instance_t test_instance_got_ip = NULL;
+
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT, ESP_EVENT_ANY_ID,
+                                                        &prov_test_event_handler, test_group, &test_instance_any));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT, IP_EVENT_STA_GOT_IP,
+                                                        &prov_test_event_handler, test_group, &test_instance_got_ip));
+
+    ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
+    esp_wifi_connect();
+
+    EventBits_t bits = xEventGroupWaitBits(test_group,
+                                           WIFI_CONNECTED_BIT | WIFI_FAIL_BIT,
+                                           pdTRUE, pdFALSE, pdMS_TO_TICKS(20000));
+
+    if (test_instance_any) {
+        esp_event_handler_instance_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, test_instance_any);
+    }
+    if (test_instance_got_ip) {
+        esp_event_handler_instance_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, test_instance_got_ip);
+    }
+    vEventGroupDelete(test_group);
+
+    if (bits & WIFI_CONNECTED_BIT) {
+        ESP_LOGI(TAG, "Test connection successful");
+        return ESP_OK;
+    } else {
+        ESP_LOGE(TAG, "Test connection failed");
+        return ESP_FAIL;
+    }
+}
+
+static const char *prov_html_page = \
+"<!DOCTYPE html>" \
+"<html lang=\"en\">" \
+"<head>" \
+"  <meta charset=\"UTF-8\">" \
+"  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">" \
+"  <title>Smart Lock Setup</title>" \
+"  <style>" \
+"    body { font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, sans-serif; max-width: 420px; margin: 40px auto; padding: 0 20px; color: #333; }" \
+"    h1 { font-size: 1.4rem; margin-bottom: 0.5rem; }" \
+"    p { color: #666; margin-top: 0; }" \
+"    label { display: block; margin-top: 16px; font-weight: 500; }" \
+"    input { width: 100%%; padding: 10px; margin-top: 6px; border: 1px solid #ccc; border-radius: 6px; font-size: 1rem; box-sizing: border-box; }" \
+"    button { margin-top: 20px; width: 100%%; padding: 12px; background: #2563eb; color: white; border: none; border-radius: 6px; font-size: 1rem; cursor: pointer; }" \
+"    button:disabled { background: #94a3b8; cursor: not-allowed; }" \
+"    .status { margin-top: 16px; padding: 10px; border-radius: 6px; font-size: 0.9rem; }" \
+"    .error { background: #fee2e2; color: #991b1b; }" \
+"    .success { background: #dcfce7; color: #166534; }" \
+"    .info { background: #e0f2fe; color: #075985; }" \
+"  </style>" \
+"</head>" \
+"<body>" \
+"  <h1>Smart Lock Setup</h1>" \
+"  <p>Enter your Wi-Fi network details and the setup code printed on the device label.</p>" \
+"  <form id=\"setupForm\">" \
+"    <label for=\"setupCode\">Setup Code</label>" \
+"    <input type=\"text\" id=\"setupCode\" name=\"setup_code\" required autocomplete=\"off\">" \
+"    <label for=\"ssid\">Network Name (SSID)</label>" \
+"    <input type=\"text\" id=\"ssid\" name=\"ssid\" required autocomplete=\"off\">" \
+"    <label for=\"password\">Network Password</label>" \
+"    <input type=\"password\" id=\"password\" name=\"password\" required>" \
+"    <button type=\"submit\" id=\"submitBtn\">Connect and Save</button>" \
+"  </form>" \
+"  <div id=\"status\" class=\"status info\" style=\"display:none;\"></div>" \
+"  <script>" \
+"    const form = document.getElementById('setupForm');" \
+"    const status = document.getElementById('status');" \
+"    const submitBtn = document.getElementById('submitBtn');" \
+"    function showStatus(msg, type) {" \
+"      status.textContent = msg;" \
+"      status.className = 'status ' + type;" \
+"      status.style.display = 'block';" \
+"    }" \
+"    form.addEventListener('submit', async (e) => {" \
+"      e.preventDefault();" \
+"      submitBtn.disabled = true;" \
+"      showStatus('Testing connection...', 'info');" \
+"      try {" \
+"        const res = await fetch('/setup', {" \
+"          method: 'POST'," \
+"          headers: { 'Content-Type': 'application/json' }," \
+"          body: JSON.stringify({" \
+"            setup_code: document.getElementById('setupCode').value," \
+"            ssid: document.getElementById('ssid').value," \
+"            password: document.getElementById('password').value" \
+"          })" \
+"        });" \
+"        const data = await res.json();" \
+"        if (res.ok) {" \
+"          showStatus('Success! The device is connecting to your network and will restart.', 'success');" \
+"          submitBtn.disabled = true;" \
+"        } else {" \
+"          showStatus(data.error || 'Setup failed', 'error');" \
+"          submitBtn.disabled = false;" \
+"        }" \
+"      } catch (err) {" \
+"        showStatus('Network error: ' + err.message, 'error');" \
+"        submitBtn.disabled = false;" \
+"      }" \
+"    });" \
+"  </script>" \
+"</body>" \
+"</html>";
+
+static esp_err_t prov_get_handler(httpd_req_t *req)
+{
+    httpd_resp_set_status(req, "200 OK");
+    httpd_resp_set_type(req, "text/html");
+    httpd_resp_send(req, prov_html_page, strlen(prov_html_page));
+    return ESP_OK;
+}
+
+static esp_err_t prov_post_handler(httpd_req_t *req)
+{
+    char buf[512];
+    int ret, remaining = req->content_len;
+
+    if (remaining >= (int)sizeof(buf)) {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "payload too large");
+        return ESP_FAIL;
+    }
+
+    ret = httpd_req_recv(req, buf, remaining);
+    if (ret <= 0) {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "failed to receive body");
+        return ESP_FAIL;
+    }
+    buf[ret] = '\0';
+
+    char setup_code[64] = {0};
+    char ssid[64] = {0};
+    char password[128] = {0};
+
+    char *p = strstr(buf, "\"setup_code\":\"");
+    if (p) {
+        p += strlen("\"setup_code\":\"");
+        char *end = strchr(p, '\"');
+        if (end) {
+            size_t len = end - p;
+            if (len >= sizeof(setup_code)) len = sizeof(setup_code) - 1;
+            strncpy(setup_code, p, len);
+            setup_code[len] = '\0';
+        }
+    }
+
+    p = strstr(buf, "\"ssid\":\"");
+    if (p) {
+        p += strlen("\"ssid\":\"");
+        char *end = strchr(p, '\"');
+        if (end) {
+            size_t len = end - p;
+            if (len >= sizeof(ssid)) len = sizeof(ssid) - 1;
+            strncpy(ssid, p, len);
+            ssid[len] = '\0';
+        }
+    }
+
+    p = strstr(buf, "\"password\":\"");
+    if (p) {
+        p += strlen("\"password\":\"");
+        char *end = strchr(p, '\"');
+        if (end) {
+            size_t len = end - p;
+            if (len >= sizeof(password)) len = sizeof(password) - 1;
+            strncpy(password, p, len);
+            password[len] = '\0';
+        }
+    }
+
+    if (setup_code[0] == '\0' || ssid[0] == '\0') {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "missing setup_code or ssid");
+        return ESP_FAIL;
+    }
+
+    char stored_code[64] = {0};
+    if (!load_setup_code(stored_code, sizeof(stored_code)) || strcmp(stored_code, setup_code) != 0) {
+        ESP_LOGW(TAG, "Invalid setup code attempt");
+        httpd_resp_send_err(req, HTTPD_403_FORBIDDEN, "invalid setup code");
+        return ESP_FAIL;
+    }
+
+    ESP_LOGI(TAG, "Provisioning request for SSID: %s", ssid);
+
+    httpd_resp_set_status(req, "200 OK");
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_send(req, "{\"status\":\"testing\"}", strlen("{\"status\":\"testing\"}"));
+
+    if (test_sta_connection(ssid, password) == ESP_OK) {
+        save_wifi_credentials(ssid, password);
+        ESP_LOGI(TAG, "Credentials saved, restarting");
+        xEventGroupSetBits(prov_event_group, PROV_CRED_RECV_BIT);
+    } else {
+        ESP_LOGW(TAG, "Test connection failed for SSID: %s", ssid);
+    }
+
+    return ESP_OK;
+}
+
+static void start_provisioning(void)
+{
+    if (provisioning_active) {
+        return;
+    }
+
+    provisioning_active = true;
+    prov_event_group = xEventGroupCreate();
+
+    ESP_LOGI(TAG, "Starting provisioning mode");
+
+    if (instance_any_id) {
+        esp_event_handler_instance_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, instance_any_id);
+        instance_any_id = NULL;
+    }
+    if (instance_got_ip) {
+        esp_event_handler_instance_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, instance_got_ip);
+        instance_got_ip = NULL;
+    }
+
+    uint8_t mac[6];
+    esp_wifi_get_mac(WIFI_IF_STA, mac);
+    char ap_ssid[64];
+    snprintf(ap_ssid, sizeof(ap_ssid), "%s%02X%02X", WIFI_PROV_SSID_PREFIX, mac[4], mac[5]);
+
+    char setup_code[32] = {0};
+    if (!load_setup_code(setup_code, sizeof(setup_code))) {
+        generate_setup_code(setup_code, sizeof(setup_code));
+        save_setup_code(setup_code);
+        ESP_LOGI(TAG, "Generated new setup code for provisioning AP");
+    } else {
+        ESP_LOGI(TAG, "Using existing setup code");
+    }
+
+    wifi_config_t ap_config = {
+        .ap = {
+            .ssid = {0},
+            .password = {0},
+            .ssid_len = 0,
+            .channel = 1,
+            .authmode = WIFI_AUTH_WPA2_PSK,
+            .max_connection = 4,
+        },
+    };
+
+    strncpy((char *)ap_config.ap.ssid, ap_ssid, sizeof(ap_config.ap.ssid) - 1);
+    ap_config.ap.ssid_len = strlen(ap_ssid);
+
+    if (strlen(setup_code) >= WIFI_PROV_AP_PASS_MIN) {
+        strncpy((char *)ap_config.ap.password, setup_code, sizeof(ap_config.ap.password) - 1);
+    } else {
+        ap_config.ap.authmode = WIFI_AUTH_OPEN;
+    }
+
+    esp_netif_create_default_wifi_ap();
+
+    esp_err_t ret = esp_wifi_set_mode(WIFI_MODE_APSTA);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to set APSTA mode: %s", esp_err_to_name(ret));
+    }
+
+    ret = esp_wifi_set_config(WIFI_IF_AP, &ap_config);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to set AP config: %s", esp_err_to_name(ret));
+    }
+
+    ret = esp_wifi_start();
+    if (ret != ESP_OK && ret != ESP_ERR_WIFI_MODE) {
+        ESP_LOGE(TAG, "Failed to start WiFi: %s", esp_err_to_name(ret));
+    }
+
+    ESP_LOGI(TAG, "Provisioning AP started: %s (authmode: %s)", ap_ssid,
+             ap_config.ap.authmode == WIFI_AUTH_OPEN ? "OPEN" : "WPA2_PSK");
+
+    httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+    config.server_port = 80;
+    config.max_open_sockets = 4;
+
+    httpd_uri_t get_uri = {
+        .uri = "/",
+        .method = HTTP_GET,
+        .handler = prov_get_handler,
+        .user_ctx = NULL
+    };
+
+    httpd_uri_t post_uri = {
+        .uri = "/setup",
+        .method = HTTP_POST,
+        .handler = prov_post_handler,
+        .user_ctx = NULL
+    };
+
+    if (httpd_start(&prov_httpd, &config) == ESP_OK) {
+        httpd_register_uri_handler(prov_httpd, &get_uri);
+        httpd_register_uri_handler(prov_httpd, &post_uri);
+        ESP_LOGI(TAG, "Provisioning HTTP server started on port 80");
+    } else {
+        ESP_LOGE(TAG, "Failed to start provisioning HTTP server");
+    }
+}
+
+static void stop_provisioning(void)
+{
+    if (!provisioning_active) {
+        return;
+    }
+
+    provisioning_active = false;
+    ESP_LOGI(TAG, "Stopping provisioning mode");
+
+    if (prov_httpd) {
+        httpd_stop(prov_httpd);
+        prov_httpd = NULL;
+    }
+
+    if (prov_event_group) {
+        vEventGroupDelete(prov_event_group);
+        prov_event_group = NULL;
+    }
+
+    esp_wifi_stop();
+    esp_wifi_deinit();
+    if (instance_any_id) {
+        esp_event_handler_instance_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, instance_any_id);
+        instance_any_id = NULL;
+    }
+    if (instance_got_ip) {
+        esp_event_handler_instance_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, instance_got_ip);
+        instance_got_ip = NULL;
+    }
+    esp_event_loop_delete_default();
+}
+
+static void provisioning_task(void *pvParameters)
+{
+    (void)pvParameters;
+
+    start_provisioning();
+
+    EventBits_t bits = xEventGroupWaitBits(prov_event_group,
+                                           PROV_CRED_RECV_BIT | PROV_TIMEOUT_BIT,
+                                           pdFALSE, pdFALSE,
+                                           pdMS_TO_TICKS(WIFI_PROV_TIMEOUT_MS));
+
+    if (bits & PROV_CRED_RECV_BIT) {
+        ESP_LOGI(TAG, "Provisioning successful, restarting");
+    } else if (bits & PROV_TIMEOUT_BIT) {
+        ESP_LOGW(TAG, "Provisioning timeout");
+    } else {
+        ESP_LOGW(TAG, "Provisioning exited without result");
+    }
+
+    stop_provisioning();
+    ESP_LOGI(TAG, "Restarting after provisioning");
+    esp_restart();
 }
 
 static void publish_state(void)
@@ -495,7 +1011,8 @@ static bool validate_command(const char *cmd)
         strcmp(command, "OTA") != 0 &&
         strcmp(command, "MODE_HOME") != 0 &&
         strcmp(command, "MODE_AWAY") != 0 &&
-        strcmp(command, "MODE_NIGHT") != 0) {
+        strcmp(command, "MODE_NIGHT") != 0 &&
+        strcmp(command, "START_PROVISIONING") != 0) {
         return false;
     }
 
@@ -522,6 +1039,28 @@ static void handle_command(const char *cmd)
     cmd_copy[sizeof(cmd_copy) - 1] = '\0';
     char *command = has_delim ? strtok(cmd_copy, "|") : cmd_copy;
 
+    if (strcmp(command, "START_PROVISIONING") == 0) {
+        ESP_LOGI(TAG, "Received START_PROVISIONING command");
+        publish_command_ack(command, "ok", "entering provisioning");
+        if (sensor_task_handle) vTaskDelete(sensor_task_handle);
+        if (control_task_handle) vTaskDelete(control_task_handle);
+        if (health_task_handle) vTaskDelete(health_task_handle);
+        sensor_task_handle = NULL;
+        control_task_handle = NULL;
+        health_task_handle = NULL;
+        mqtt_app_stop();
+        esp_wifi_stop();
+        if (instance_any_id) {
+            esp_event_handler_instance_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, instance_any_id);
+            instance_any_id = NULL;
+        }
+        if (instance_got_ip) {
+            esp_event_handler_instance_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, instance_got_ip);
+            instance_got_ip = NULL;
+        }
+        xTaskCreate(provisioning_task, "prov_task", 8192, NULL, 4, NULL);
+        return;
+    }
 
     if (strcmp(command, "LOCK") == 0) {
         apply_lock_state(LOCK_STATE_LOCKED, "Command lock", true);
@@ -559,7 +1098,6 @@ static void handle_command(const char *cmd)
 
 static void sensor_task(void *pvParameters)
 {
-
     while (1) {
         int64_t now = now_ms();
         int pir_raw = (gpio_get_level(PIN_PIR) == PIR_ACTIVE_LEVEL) ? 1 : 0;
@@ -693,7 +1231,6 @@ static void sensor_task(void *pvParameters)
 
 static void control_task(void *pvParameters)
 {
-
     while (1) {
         static int64_t last_schedule_ms = 0;
         command_t msg;
@@ -733,7 +1270,6 @@ static void control_task(void *pvParameters)
 
 static void health_task(void *pvParameters)
 {
-
     while (1) {
         size_t free_heap = esp_get_free_heap_size();
         if (free_heap < HEAP_MIN_THRESHOLD_BYTES) {
@@ -817,8 +1353,7 @@ static void trigger_cam_capture(void)
     }
 
     esp_err_t err = esp_http_client_perform(client);
-    if (err == ESP_OK) {
-    } else {
+    if (err != ESP_OK) {
         ESP_LOGW(TAG, "CAM capture failed: %s", esp_err_to_name(err));
     }
     esp_http_client_cleanup(client);
@@ -853,7 +1388,6 @@ static void apply_lock_state(lock_state_t new_state, const char *reason, bool no
 
 void app_main(void)
 {
-
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
         ESP_ERROR_CHECK(nvs_flash_erase());
@@ -868,11 +1402,25 @@ void app_main(void)
 
     command_queue = xQueueCreate(10, sizeof(command_t));
 
-    wifi_init_sta();
+    char sta_ssid[64] = {0};
+    char sta_pass[128] = {0};
+    bool has_creds = load_wifi_credentials(sta_ssid, sizeof(sta_ssid), sta_pass, sizeof(sta_pass));
+
+    if (!has_creds) {
+        ESP_LOGW(TAG, "No WiFi credentials found, entering provisioning mode");
+        xTaskCreate(provisioning_task, "prov_task", 8192, NULL, 4, NULL);
+        return;
+    }
+
+    wifi_init_sta(sta_ssid, sta_pass);
 
     EventBits_t bits = xEventGroupWaitBits(wifi_event_group,
                                            WIFI_CONNECTED_BIT | WIFI_FAIL_BIT,
-                                           pdFALSE, pdFALSE, portMAX_DELAY);
+                                           pdFALSE, pdFALSE, pdMS_TO_TICKS(WIFI_STA_SETTLE_MS));
+
+    xTaskCreate(sensor_task, "sensor_task", 4096, NULL, 5, &sensor_task_handle);
+    xTaskCreate(control_task, "control_task", 4096, NULL, 5, &control_task_handle);
+    xTaskCreate(health_task, "health_task", 4096, NULL, 3, &health_task_handle);
 
     if (bits & WIFI_CONNECTED_BIT) {
         uint8_t mac[6];
@@ -886,11 +1434,9 @@ void app_main(void)
         initialize_sntp();
         mqtt_app_start();
 
-        xTaskCreate(sensor_task, "sensor_task", 4096, NULL, 5, &sensor_task_handle);
-        xTaskCreate(control_task, "control_task", 4096, NULL, 5, &control_task_handle);
-        xTaskCreate(health_task, "health_task", 4096, NULL, 3, &health_task_handle);
-
     } else {
-        ESP_LOGE(TAG, "WiFi connection failed - system halted");
+        ESP_LOGE(TAG, "WiFi connection failed after %d ms, entering provisioning mode", WIFI_STA_SETTLE_MS);
+        esp_wifi_stop();
+        xTaskCreate(provisioning_task, "prov_task", 8192, NULL, 4, NULL);
     }
 }

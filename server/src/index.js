@@ -723,8 +723,8 @@ app.post("/api/command", (req, res) => {
   if (command.length > 64) {
     return res.status(400).json({ error: "command too long" });
   }
-  if (!["LOCK", "UNLOCK", "SILENCE", "ARM", "OTA", "MODE_HOME", "MODE_AWAY", "MODE_NIGHT"].includes(command)) {
-    return res.status(400).json({ error: "invalid command. Allowed: LOCK, UNLOCK, SILENCE, ARM, OTA, MODE_HOME, MODE_AWAY, MODE_NIGHT" });
+  if (!["LOCK", "UNLOCK", "SILENCE", "ARM", "OTA", "MODE_HOME", "MODE_AWAY", "MODE_NIGHT", "START_PROVISIONING"].includes(command)) {
+    return res.status(400).json({ error: "invalid command. Allowed: LOCK, UNLOCK, SILENCE, ARM, OTA, MODE_HOME, MODE_AWAY, MODE_NIGHT, START_PROVISIONING" });
   }
 
   // Add nonce and timestamp for replay protection

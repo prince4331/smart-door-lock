@@ -7,11 +7,11 @@
 
 #pragma once
 
-// ---- Wi-Fi (station) ----
-#define WIFI_STA_SSID       "YOUR_WIFI_SSID"
-#define WIFI_STA_PASS       "YOUR_WIFI_PASSWORD"
+// Wi-Fi STA credentials are loaded from NVS at runtime. Provisioning mode
+// starts when no credentials are stored or when STA fails to connect.
+// The MQTT broker URI, client ID, and credentials are still defined here
+// because they are required for the first MQTT connection after provisioning.
 
-// ---- MQTT broker (use mqtts:// in production) ----
 #define MQTT_BROKER_URI     "mqtts://your-broker.example.com:8883"
 #define MQTT_CLIENT_ID      "esp32-smartlock"
 #define MQTT_USERNAME       "YOUR_MQTT_USERNAME"
@@ -28,7 +28,7 @@
 #define NVS_KEY_STA_PASS       "sta_pass"
 #define NVS_KEY_SETUP_CODE     "setup_code"
 
-#define CMD_TIMESTAMP_WINDOW_SEC  300   // Accept commands within 5 min window
+#define CMD_TIMESTAMP_WINDOW_SEC  300
 
 extern char g_device_id[32];
 
