@@ -13,6 +13,56 @@ import https from "https";
 import rateLimit from "express-rate-limit";
 import crypto from "crypto";
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Fail-closed startup. The caller's own environment is validated here, before
+// the local .env file is read and before any socket or broker connection is
+// created. Validating after dotenv would let a project .env silently mask an
+// operator who deployed with an empty environment.
+//
+// NODE_ENV=test is the harness contract: a test imports this module, so it
+// must not terminate the process on a validation failure; the caller asserts
+// on validateConfig() directly.
+const IS_TEST = process.env.NODE_ENV === "test";
+
+export function validateConfig({ dashToken, camUploadToken, camSnapshotUrl, camStreamUrl }) {
+  const errors = [];
+  if (!dashToken || !dashToken.trim()) {
+    errors.push("DASH_TOKEN is missing, empty, or whitespace-only. Set it in the environment before starting the server.");
+  }
+  if (!camUploadToken || !camUploadToken.trim()) {
+    errors.push("CAM_UPLOAD_TOKEN is missing or empty. It is required for POST /api/cam/upload (set CAM_UPLOAD_TOKEN, or the legacy CAM_TOKEN name).");
+  }
+  if (camSnapshotUrl && !camSnapshotUrl.startsWith("https://")) {
+    errors.push("CAM_SNAPSHOT_URL must use https:// when configured.");
+  }
+  if (camStreamUrl && !camStreamUrl.startsWith("https://")) {
+    errors.push("CAM_STREAM_URL must use https:// when configured.");
+  }
+  return errors;
+}
+
+export function validateServerConfig() {
+  return validateConfig({
+    dashToken: process.env.DASH_TOKEN,
+    camUploadToken: process.env.CAM_UPLOAD_TOKEN || process.env.CAM_TOKEN,
+    camSnapshotUrl: process.env.CAM_SNAPSHOT_URL,
+    camStreamUrl: process.env.CAM_STREAM_URL,
+  });
+}
+
+if (!IS_TEST) {
+  const configErrors = validateServerConfig();
+  if (configErrors.length) {
+    for (const msg of configErrors) console.error(`[CONFIG] ${msg}`);
+    console.error("[CONFIG] Refusing to start: required configuration is missing or insecure.");
+    process.exit(1);
+  }
+}
+
+dotenv.config();
+
 dotenv.config();
 
 const PORT = process.env.PORT || 8080;
@@ -20,15 +70,18 @@ const MQTT_BROKER = process.env.MQTT_BROKER || "mqtt://localhost:1883";
 const MQTT_CLIENT_ID = process.env.MQTT_CLIENT_ID || "smartlock-server";
 const MQTT_USERNAME = process.env.MQTT_USERNAME || undefined;
 const MQTT_PASSWORD = process.env.MQTT_PASSWORD || undefined;
-const DB_PATH = process.env.DB_PATH || "./data.json";
-const DASH_TOKEN = process.env.DASH_TOKEN;
-const CAM_TOKEN = process.env.CAM_TOKEN || "";
+const DB_PATH = process.env.DB_PATH || path.join(__dirname, "../data.db");
+const DASH_TOKEN = process.env.DASH_TOKEN || "";
+const CAM_UPLOAD_TOKEN = process.env.CAM_UPLOAD_TOKEN || process.env.CAM_TOKEN || "";
 const CAM_STREAM_URL = process.env.CAM_STREAM_URL || "";
 const CAM_SNAPSHOT_URL = process.env.CAM_SNAPSHOT_URL || "";
 const TG_BOT_TOKEN = process.env.TG_BOT_TOKEN || "";
 const TG_CHAT_ID = process.env.TG_CHAT_ID || "";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+// True when this module runs as the entrypoint rather than imported by a test.
+// The entrypoint is the only path that connects to MQTT and binds the HTTP
+// listener; an import always uses the inert stub below.
+const IS_ENTRYPOINT = process.argv[1] && path.resolve(process.argv[1]) === __filename;
 
 // Express app setup
 const app = express();
@@ -53,7 +106,11 @@ await db.read();
 db.data ||= { state: null, events: [] };
 await db.write();
 
-// MQTT client
+const ENABLE_MQTT = IS_ENTRYPOINT && !IS_TEST;
+
+// MQTT client. The real broker connection is only created when this module
+// runs as the entrypoint; when imported by tests ENABLE_MQTT is false, so the
+// stub below is used and no broker connection is ever opened.
 const mqttOpts = {
   clientId: MQTT_CLIENT_ID,
   username: MQTT_USERNAME,
@@ -61,7 +118,30 @@ const mqttOpts = {
   keepalive: 30,
   reconnectPeriod: 2000,
 };
-const mqttClient = mqtt.connect(MQTT_BROKER, mqttOpts);
+
+const mqttPublished = [];
+
+function createMqttClient() {
+  if (!ENABLE_MQTT) {
+    // Inert stand-in used when the module is imported (tests) rather than run
+    // as the entrypoint: records published messages and succeeds the callback
+    // instead of opening a network connection.
+    return {
+      connected: false,
+      publish: (topic, payload, opts, cb) => {
+        if (typeof opts === "function") cb = opts;
+        mqttPublished.push({ topic, payload: payload.toString() });
+        if (typeof cb === "function") cb(null);
+      },
+      on: () => {},
+      once: () => {},
+      end: () => {},
+    };
+  }
+  return mqtt.connect(MQTT_BROKER, mqttOpts);
+}
+
+const mqttClient = createMqttClient();
 
 const MQTT_TOPIC_STATE = "smartlock/state";
 const MQTT_TOPIC_ALERT = "smartlock/alert";
@@ -206,14 +286,17 @@ async function handleAlertSideEffects(alertPayload) {
   }
 }
 
-mqttClient.on("connect", () => {
-  console.log(`[MQTT] Connected to ${MQTT_BROKER}`);
-  mqttClient.subscribe([MQTT_TOPIC_STATE, MQTT_TOPIC_ALERT, MQTT_TOPIC_METRIC, MQTT_TOPIC_ACK, MQTT_TOPIC_CAM_META, MQTT_TOPIC_CAM_CHUNK], { qos: 1 });
-});
+// MQTT event wiring. Only the real client emits these; the test stub is inert.
+if (ENABLE_MQTT) {
+  mqttClient.on("connect", () => {
+    console.log(`[MQTT] Connected to ${MQTT_BROKER}`);
+    mqttClient.subscribe([MQTT_TOPIC_STATE, MQTT_TOPIC_ALERT, MQTT_TOPIC_METRIC, MQTT_TOPIC_ACK, MQTT_TOPIC_CAM_META, MQTT_TOPIC_CAM_CHUNK], { qos: 1 });
+  });
 
-mqttClient.on("reconnect", () => console.log("[MQTT] Reconnecting"));
+  mqttClient.on("reconnect", () => console.log("[MQTT] Reconnecting"));
 
-mqttClient.on("error", (err) => console.error("[MQTT] Error", err.message));
+  mqttClient.on("error", (err) => console.error("[MQTT] Error", err.message));
+}
 
 mqttClient.on("message", async (topic, payload) => {
   const ts = Date.now();
@@ -374,82 +457,115 @@ JSON.parseSafe = (str) => {
   }
 };
 
-// API Key authentication
-const API_KEY = process.env.API_KEY;
-const API_REQUIRED = API_KEY && API_KEY.length >= 32;
-
-if (API_REQUIRED) {
-  console.log("[AUTH] API key authentication enabled");
-} else {
-  console.warn("[WARN] No API_KEY set - authentication DISABLED (development only)");
+// Credential retrieval. `Authorization: Bearer <token>` is canonical; the
+// legacy `X-Access-Token` header is still accepted so existing clients keep
+// working. Submitted values are never logged.
+function extractBearerToken(req) {
+  const auth = req.headers["authorization"];
+  if (auth && /^Bearer\s+/i.test(auth)) {
+    return auth.replace(/^Bearer\s+/i, "").trim();
+  }
+  const legacy = req.headers["x-access-token"];
+  if (legacy) return String(legacy).trim();
+  return null;
 }
 
-function authenticateApiKey(req, res, next) {
-  if (!API_REQUIRED) return next(); // Skip in dev mode
-  
-  const apiKey = req.headers["x-api-key"] || req.query.api_key;
-  if (!apiKey) {
-    return res.status(401).json({ error: "API key required" });
-  }
-  
-  // Constant-time comparison to prevent timing attacks
-  const expected = Buffer.from(API_KEY);
-  const provided = Buffer.from(apiKey);
-  if (expected.length !== provided.length || 
-      !crypto.timingSafeEqual(expected, provided)) {
-    console.warn(`[AUTH] Invalid API key attempt from ${req.ip}`);
-    return res.status(403).json({ error: "Invalid API key" });
-  }
-  next();
+// Constant-time comparison. Both lengths are passed through SHA-256 first so
+// the comparison cost does not leak the expected token's length.
+function tokenMatches(expected, provided) {
+  if (!provided) return false;
+  const exp = Buffer.from(expected);
+  const prov = Buffer.from(provided);
+  const expLen = crypto.createHash("sha256").update(exp).digest();
+  const provLen = crypto.createHash("sha256").update(prov).digest();
+  const lengthOk = crypto.timingSafeEqual(expLen, provLen) && exp.length === prov.length;
+  return lengthOk && crypto.timingSafeEqual(exp, prov);
 }
 
-// Access token authentication for control endpoints (dashboard)
+// Dashboard/owner access token. Fail-closed: DASH_TOKEN is validated at
+// startup (validateServerConfig), so this middleware never admits a request
+// when it is unset. Missing, malformed, or incorrect credentials return 401.
 function authenticateAccessToken(req, res, next) {
-  if (!DASH_TOKEN) return next(); // Skip if not configured
-  
-  const token = req.headers["x-access-token"];
+  const token = extractBearerToken(req);
   if (!token) {
+    console.warn(`[AUTH] Missing access token from ${req.ip}`);
     return res.status(401).json({ error: "Access token required" });
   }
-  
-  // Constant-time comparison
-  const expected = Buffer.from(DASH_TOKEN);
-  const provided = Buffer.from(token);
-  if (expected.length !== provided.length || 
-      !crypto.timingSafeEqual(expected, provided)) {
-    console.warn(`[AUTH] Invalid access token attempt from ${req.ip}`);
+  if (!tokenMatches(DASH_TOKEN, token)) {
+    console.warn(`[AUTH] Invalid access token from ${req.ip}`);
     return res.status(401).json({ error: "Invalid access token" });
   }
   next();
+}
+
+// Camera device credential for POST /api/cam/upload. Separate from the
+// dashboard token so a dashboard credential cannot be used to upload frames.
+// Fail-closed: an upload without a valid device token is rejected.
+function authenticateCamUpload(req, res, next) {
+  const token = extractCamToken(req);
+  if (!token) {
+    console.warn(`[AUTH] Missing camera upload token from ${req.ip}`);
+    return res.status(401).json({ error: "Camera upload token required" });
+  }
+  if (!tokenMatches(CAM_UPLOAD_TOKEN, token)) {
+    console.warn(`[AUTH] Invalid camera upload token from ${req.ip}`);
+    return res.status(401).json({ error: "Invalid camera upload token" });
+  }
+  next();
+}
+
+// Camera devices send the device credential in x-cam-token; the Authorization
+// Bearer header is also accepted so device and dashboard share one scheme.
+function extractCamToken(req) {
+  const auth = req.headers["authorization"];
+  if (auth && /^Bearer\s+/i.test(auth)) {
+    return auth.replace(/^Bearer\s+/i, "").trim();
+  }
+  const header = req.headers["x-cam-token"];
+  if (header) return String(header).trim();
+  return null;
 }
 
 // Middleware
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "../public")));
 
-// Rate limiting (disabled for local dev to avoid dashboard polling issues)
-if (process.env.DISABLE_RATE_LIMIT !== "1") {
+// Rate limiting. Only the health probe bypasses the limiter; protected read
+// paths (/api/state, /api/events, /api/cam/status, /api/stream) no longer do.
+// The limiter is never disabled in production: DISABLE_RATE_LIMIT is honoured
+// only in development and test, where tests need to exceed the window quota.
+const RATE_LIMIT_SKIP = ["/api/health"];
+const rateLimitDisabled = process.env.DISABLE_RATE_LIMIT === "1" &&
+  (process.env.NODE_ENV === "development" || IS_TEST);
+if (process.env.DISABLE_RATE_LIMIT === "1" && !rateLimitDisabled) {
+  console.warn("[WARN] DISABLE_RATE_LIMIT=1 ignored outside development/test; the rate limiter stays enabled.");
+}
+if (!rateLimitDisabled) {
   const limiter = rateLimit({
     windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || "60000"),
     max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || "20"),
     standardHeaders: true,
     legacyHeaders: false,
     message: { error: "Too many requests, please try again later" },
-    // Health + high-frequency endpoints bypass
-    skip: (req) =>
-      req.path === "/api/health" ||
-      req.path === "/api/state" ||
-      req.path === "/api/cam/status" ||
-      req.path === "/api/stream",
+    skip: (req) => RATE_LIMIT_SKIP.includes(req.path),
   });
   // Apply to all API routes
   app.use("/api", limiter);
 }
 
+// Every route below this point requires the dashboard access token except the
+// health probe. Applying the middleware to the whole router means a route
+// added later cannot be left unprotected by accident.
+app.use("/api/", (req, res, next) => {
+  if (req.path === "/health") return next();
+  if (req.path === "/cam/upload") return authenticateCamUpload(req, res, next);
+  return authenticateAccessToken(req, res, next);
+});
+
 app.get("/api/health", (_req, res) => {
-  res.json({ 
-    status: "ok", 
-    mqtt: mqttClient.connected,
+  res.json({
+    status: "ok",
+    mqtt: ENABLE_MQTT ? mqttClient.connected : false,
     uptime: process.uptime(),
     timestamp: Date.now()
   });
@@ -457,10 +573,10 @@ app.get("/api/health", (_req, res) => {
 
 app.get("/api/state", (_req, res) => {
   if (!db.data.state) {
-    return res.json({ 
-      locked: true, 
-      alarm: false, 
-      door: "CLOSED", 
+    return res.json({
+      locked: true,
+      alarm: false,
+      door: "CLOSED",
       uptime: 0,
       rssi: -100,
       heap_free: 0
@@ -474,7 +590,7 @@ app.get("/api/events", (req, res) => {
   res.json(db.data.events.slice(0, limit));
 });
 
-app.post("/api/pin", authenticateAccessToken, (req, res) => {
+app.post("/api/pin", (req, res) => {
   const { pin } = req.body;
   if (!pin || typeof pin !== "string") {
     return res.status(400).json({ error: "pin required (string)" });
@@ -510,11 +626,9 @@ app.post("/api/cam/capture", async (_req, res) => {
   res.json({ ok: true, last_update: camLastUpdate });
 });
 
+// Device-to-server upload. Uses its own mandatory token (CAM_UPLOAD_TOKEN,
+// or the legacy CAM_TOKEN name) so a dashboard token cannot upload frames.
 app.post("/api/cam/upload", express.raw({ type: ["image/jpeg", "application/octet-stream"], limit: "3mb" }), (req, res) => {
-  if (CAM_TOKEN && req.headers["x-cam-token"] !== CAM_TOKEN) {
-    return res.status(401).json({ error: "invalid camera token" });
-  }
-
   if (!req.body || !req.body.length) {
     return res.status(400).json({ error: "empty image" });
   }
@@ -531,9 +645,9 @@ app.post("/api/cam/upload", express.raw({ type: ["image/jpeg", "application/octe
   res.json({ ok: true });
 });
 
-app.post("/api/command", authenticateAccessToken, (req, res) => {
+app.post("/api/command", (req, res) => {
   const { command } = req.body;
-  
+
   // Strict input validation
   if (!command || typeof command !== "string") {
     return res.status(400).json({ error: "command required (string)" });
@@ -544,7 +658,7 @@ app.post("/api/command", authenticateAccessToken, (req, res) => {
   if (!["LOCK", "UNLOCK", "SILENCE", "ARM", "OTA", "MODE_HOME", "MODE_AWAY", "MODE_NIGHT"].includes(command)) {
     return res.status(400).json({ error: "invalid command. Allowed: LOCK, UNLOCK, SILENCE, ARM, OTA, MODE_HOME, MODE_AWAY, MODE_NIGHT" });
   }
-  
+
   // Add nonce and timestamp for replay protection
   const nonce = Date.now() * 1000 + Math.floor(Math.random() * 1000);
   const timestamp = Math.floor(Date.now() / 1000);
@@ -560,7 +674,8 @@ app.post("/api/command", authenticateAccessToken, (req, res) => {
   });
 });
 
-// Server-sent events for live dashboard
+// Server-sent events for live dashboard. Authenticated above by the shared
+// /api/ middleware, so the stream is established only with a valid token.
 app.get("/api/stream", (req, res) => {
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
@@ -572,12 +687,24 @@ app.get("/api/stream", (req, res) => {
   req.on("close", () => sseClients.delete(client));
 });
 
-// Minimal static dashboard (placeholder)
+// Dashboard static assets. Mounted once, on the public directory.
 app.use(express.static(path.join(__dirname, "..", "public")));
 
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-});
+// The HTTP listener starts only when this module runs as the entrypoint, and
+// only after startup configuration validation has passed. Imported by tests,
+// it stays silent.
+if (IS_ENTRYPOINT) {
+  const configErrors = validateServerConfig();
+  if (configErrors.length) {
+    for (const msg of configErrors) console.error(`[CONFIG] ${msg}`);
+    console.error("[CONFIG] Refusing to start: required configuration is missing or insecure.");
+    process.exitCode = 1;
+  } else {
+    app.listen(PORT, () => {
+      console.log(`Server running on http://localhost:${PORT}`);
+    });
+  }
+}
 
 function broadcast(msg) {
   const data = `data: ${JSON.stringify(msg)}\n\n`;
@@ -585,3 +712,21 @@ function broadcast(msg) {
     client.res.write(data);
   }
 }
+
+// Accessors for the regression tests. `mqttPublished` records what the inert
+// MQTT stub was asked to send, so a test can assert that an authorised
+// request really reached the publish step. `closeTestRuntime` drops the
+// timers the imported module still holds, letting the runner exit.
+export function getMqttPublished() {
+  return mqttPublished;
+}
+
+export function clearMqttPublished() {
+  mqttPublished.length = 0;
+}
+
+export function closeTestRuntime() {
+  if (typeof mqttClient.end === "function") mqttClient.end();
+}
+
+export { app };
