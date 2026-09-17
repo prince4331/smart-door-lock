@@ -58,7 +58,7 @@ const rawEnvPath = typeof process.env.DOTENV_CONFIG_PATH === "string"
   : "";
 export const ENV_FILE_PATH = rawEnvPath && path.isAbsolute(rawEnvPath)
   ? rawEnvPath
-  : path.resolve(__dirname, rawEnvPath || ".env");
+  : path.resolve(__dirname, "..", rawEnvPath || ".env");
 
 if (!IS_TEST) {
   // dotenv does not overwrite variables that already exist in the process
