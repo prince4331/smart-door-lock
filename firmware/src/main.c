@@ -115,7 +115,7 @@ static bool load_wifi_credentials(char *ssid, size_t ssid_len, char *pass, size_
 static bool save_wifi_credentials(const char *ssid, const char *pass);
 static bool load_setup_code(char *code, size_t max_len);
 static bool save_setup_code(const char *code);
-static void generate_setup_code(char *buf, size_t len);
+static bool generate_setup_code(char *buf, size_t len);
 static void start_provisioning(void);
 static void stop_provisioning(void);
 static void provisioning_task(void *pvParameters);
@@ -133,18 +133,6 @@ static void apply_lock_state(lock_state_t new_state, const char *reason, bool no
 static void sensor_task(void *pvParameters);
 static void control_task(void *pvParameters);
 static void health_task(void *pvParameters);
-
-static bool is_command_word(const char *cmd)
-{
-    return (strcmp(cmd, "LOCK") == 0 ||
-            strcmp(cmd, "UNLOCK") == 0 ||
-            strcmp(cmd, "SILENCE") == 0 ||
-            strcmp(cmd, "ARM") == 0 ||
-            strcmp(cmd, "OTA") == 0 ||
-            strcmp(cmd, "MODE_HOME") == 0 ||
-            strcmp(cmd, "MODE_AWAY") == 0 ||
-            strcmp(cmd, "MODE_NIGHT") == 0);
-}
 
 static int64_t now_ms(void) {
     return esp_timer_get_time() / 1000;
@@ -487,13 +475,14 @@ static bool save_setup_code(const char *code)
     return nvs_commit(nvs_storage_handle) == ESP_OK;
 }
 
-static void generate_setup_code(char *buf, size_t len)
+static bool generate_setup_code(char *buf, size_t len)
 {
     const char charset[] = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     for (size_t i = 0; i < len - 1; i++) {
         buf[i] = charset[esp_random() % (sizeof(charset) - 1)];
     }
     buf[len - 1] = '\0';
+    return true;
 }
 
 static void prov_test_event_handler(void* arg, esp_event_base_t event_base,
@@ -505,8 +494,6 @@ static void prov_test_event_handler(void* arg, esp_event_base_t event_base,
 
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
         esp_wifi_connect();
-    } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
-        xEventGroupSetBits(test_group, WIFI_FAIL_BIT);
     } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
         xEventGroupSetBits(test_group, WIFI_CONNECTED_BIT);
     }
@@ -556,6 +543,8 @@ static esp_err_t test_sta_connection(const char *ssid, const char *pass)
         esp_event_handler_instance_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, test_instance_got_ip);
     }
     vEventGroupDelete(test_group);
+
+    esp_wifi_disconnect();
 
     if (bits & WIFI_CONNECTED_BIT) {
         ESP_LOGI(TAG, "Test connection successful");
@@ -717,18 +706,23 @@ static esp_err_t prov_post_handler(httpd_req_t *req)
         return ESP_FAIL;
     }
 
-    ESP_LOGI(TAG, "Provisioning request for SSID: %s", ssid);
+    esp_err_t test_result = test_sta_connection(ssid, password);
 
-    httpd_resp_set_status(req, "200 OK");
-    httpd_resp_set_type(req, "application/json");
-    httpd_resp_send(req, "{\"status\":\"testing\"}", strlen("{\"status\":\"testing\"}"));
-
-    if (test_sta_connection(ssid, password) == ESP_OK) {
+    if (test_result == ESP_OK) {
         save_wifi_credentials(ssid, password);
         ESP_LOGI(TAG, "Credentials saved, restarting");
         xEventGroupSetBits(prov_event_group, PROV_CRED_RECV_BIT);
+
+        httpd_resp_set_status(req, "200 OK");
+        httpd_resp_set_type(req, "application/json");
+        httpd_resp_send(req, "{\"status\":\"success\"}", strlen("{\"status\":\"success\"}"));
     } else {
-        ESP_LOGW(TAG, "Test connection failed for SSID: %s", ssid);
+        ESP_LOGW(TAG, "Test connection failed for provided SSID");
+
+        httpd_resp_set_status(req, "400 Bad Request");
+        httpd_resp_set_type(req, "application/json");
+        httpd_resp_send(req, "{\"error\":\"Unable to connect using those Wi-Fi credentials\"}",
+                         strlen("{\"error\":\"Unable to connect using those Wi-Fi credentials\"}"));
     }
 
     return ESP_OK;
@@ -760,9 +754,16 @@ static void start_provisioning(void)
     snprintf(ap_ssid, sizeof(ap_ssid), "%s%02X%02X", WIFI_PROV_SSID_PREFIX, mac[4], mac[5]);
 
     char setup_code[32] = {0};
-    if (!load_setup_code(setup_code, sizeof(setup_code))) {
-        generate_setup_code(setup_code, sizeof(setup_code));
-        save_setup_code(setup_code);
+    if (!load_setup_code(setup_code, sizeof(setup_code)) || strlen(setup_code) < WIFI_PROV_AP_PASS_MIN) {
+        if (!generate_setup_code(setup_code, sizeof(setup_code)) || !save_setup_code(setup_code)) {
+            ESP_LOGE(TAG, "Failed to generate/save setup code, cannot start provisioning AP");
+            provisioning_active = false;
+            if (prov_event_group) {
+                vEventGroupDelete(prov_event_group);
+                prov_event_group = NULL;
+            }
+            return;
+        }
         ESP_LOGI(TAG, "Generated new setup code for provisioning AP");
     } else {
         ESP_LOGI(TAG, "Using existing setup code");
@@ -785,10 +786,28 @@ static void start_provisioning(void)
     if (strlen(setup_code) >= WIFI_PROV_AP_PASS_MIN) {
         strncpy((char *)ap_config.ap.password, setup_code, sizeof(ap_config.ap.password) - 1);
     } else {
-        ap_config.ap.authmode = WIFI_AUTH_OPEN;
+        ESP_LOGE(TAG, "Setup code too short, cannot start open AP");
+        provisioning_active = false;
+        if (prov_event_group) {
+            vEventGroupDelete(prov_event_group);
+            prov_event_group = NULL;
+        }
+        return;
     }
 
     esp_netif_create_default_wifi_ap();
+
+    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+    esp_err_t init_ret = esp_wifi_init(&cfg);
+    if (init_ret != ESP_OK && init_ret != ESP_ERR_WIFI_MODE) {
+        ESP_LOGE(TAG, "Failed to init WiFi for provisioning: %s", esp_err_to_name(init_ret));
+        provisioning_active = false;
+        if (prov_event_group) {
+            vEventGroupDelete(prov_event_group);
+            prov_event_group = NULL;
+        }
+        return;
+    }
 
     esp_err_t ret = esp_wifi_set_mode(WIFI_MODE_APSTA);
     if (ret != ESP_OK) {
@@ -981,14 +1000,29 @@ static bool validate_command(const char *cmd)
     buf[sizeof(buf) - 1] = '\0';
 
     char *command = strtok(buf, "|");
-    char *nonce = strtok(NULL, "|");
+    char *nonce_str = strtok(NULL, "|");
     char *ts_str = strtok(NULL, "|");
 
-    if (!command || !nonce || !ts_str) {
+    if (!command || !nonce_str || !ts_str) {
         return false;
     }
 
-    long ts = strtol(ts_str, NULL, 10);
+    if (strtok(NULL, "|")) {
+        return false;
+    }
+
+    char *nonce_end;
+    long long nonce_val = strtoll(nonce_str, &nonce_end, 10);
+    if (*nonce_end != '\0') {
+        return false;
+    }
+
+    char *ts_end;
+    long ts = strtol(ts_str, &ts_end, 10);
+    if (*ts_end != '\0') {
+        return false;
+    }
+
     time_t now;
     time(&now);
     long diff = labs((long)now - ts);
@@ -997,7 +1031,6 @@ static bool validate_command(const char *cmd)
         return false;
     }
 
-    int64_t nonce_val = atoll(nonce);
     if (is_nonce_seen(nonce_val)) {
         ESP_LOGW(TAG, "Command replay detected: nonce %lld already used", (long long)nonce_val);
         return false;
@@ -1021,14 +1054,7 @@ static bool validate_command(const char *cmd)
 
 static void handle_command(const char *cmd)
 {
-    bool has_delim = (strchr(cmd, '|') != NULL);
-    if (has_delim) {
-        if (!validate_command(cmd)) {
-            ESP_LOGW(TAG, "Invalid command rejected: %s", cmd);
-            publish_command_ack(cmd, "rejected", "invalid command");
-            return;
-        }
-    } else if (!is_command_word(cmd)) {
+    if (!validate_command(cmd)) {
         ESP_LOGW(TAG, "Invalid command rejected: %s", cmd);
         publish_command_ack(cmd, "rejected", "invalid command");
         return;
@@ -1037,17 +1063,11 @@ static void handle_command(const char *cmd)
     char cmd_copy[80];
     strncpy(cmd_copy, cmd, sizeof(cmd_copy) - 1);
     cmd_copy[sizeof(cmd_copy) - 1] = '\0';
-    char *command = has_delim ? strtok(cmd_copy, "|") : cmd_copy;
+    char *command = strtok(cmd_copy, "|");
 
     if (strcmp(command, "START_PROVISIONING") == 0) {
         ESP_LOGI(TAG, "Received START_PROVISIONING command");
         publish_command_ack(command, "ok", "entering provisioning");
-        if (sensor_task_handle) vTaskDelete(sensor_task_handle);
-        if (control_task_handle) vTaskDelete(control_task_handle);
-        if (health_task_handle) vTaskDelete(health_task_handle);
-        sensor_task_handle = NULL;
-        control_task_handle = NULL;
-        health_task_handle = NULL;
         mqtt_app_stop();
         esp_wifi_stop();
         if (instance_any_id) {
@@ -1406,6 +1426,10 @@ void app_main(void)
     char sta_pass[128] = {0};
     bool has_creds = load_wifi_credentials(sta_ssid, sizeof(sta_ssid), sta_pass, sizeof(sta_pass));
 
+    xTaskCreate(sensor_task, "sensor_task", 4096, NULL, 5, &sensor_task_handle);
+    xTaskCreate(control_task, "control_task", 4096, NULL, 5, &control_task_handle);
+    xTaskCreate(health_task, "health_task", 4096, NULL, 3, &health_task_handle);
+
     if (!has_creds) {
         ESP_LOGW(TAG, "No WiFi credentials found, entering provisioning mode");
         xTaskCreate(provisioning_task, "prov_task", 8192, NULL, 4, NULL);
@@ -1417,10 +1441,6 @@ void app_main(void)
     EventBits_t bits = xEventGroupWaitBits(wifi_event_group,
                                            WIFI_CONNECTED_BIT | WIFI_FAIL_BIT,
                                            pdFALSE, pdFALSE, pdMS_TO_TICKS(WIFI_STA_SETTLE_MS));
-
-    xTaskCreate(sensor_task, "sensor_task", 4096, NULL, 5, &sensor_task_handle);
-    xTaskCreate(control_task, "control_task", 4096, NULL, 5, &control_task_handle);
-    xTaskCreate(health_task, "health_task", 4096, NULL, 3, &health_task_handle);
 
     if (bits & WIFI_CONNECTED_BIT) {
         uint8_t mac[6];
