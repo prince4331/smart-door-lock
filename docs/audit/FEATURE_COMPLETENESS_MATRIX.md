@@ -2,6 +2,9 @@
 
 Audit date: 2026-09-16
 Baseline commit: `b0893d7` (branch `audit/full-codebase-baseline-20260916`)
+Updated 2026-09-17 after the corrective review pass on
+`fix/phase-0-security-containment` (camera media removed from the public
+static root; configuration validated before any service starts).
 
 Status legend:
 
@@ -62,10 +65,10 @@ Status legend:
 | REST: health | Complete | `/api/health` 200, public by design (verified runtime) |
 | REST: state read | Complete | authenticated as of Phase 0 (was SEC-04) |
 | REST: event history | Complete | authenticated as of Phase 0 (was SEC-04) |
-| REST: send command | Complete | token-gated, fail-closed startup as of Phase 0 (was SEC-03) |
+| REST: send command | Complete | token-gated, fail-closed startup as of Phase 0; config validated before the listener, MQTT, camera, Telegram or database is touched (was SEC-03) |
 | REST: set PIN | Partial | token-gated; PIN relayed in plaintext over MQTT |
 | SSE live stream | Complete | authenticated on connect as of Phase 0 (was SEC-04) |
-| Camera status/stream/capture/upload | Partial | upload now requires mandatory `CAM_UPLOAD_TOKEN` (Phase 0); camera URLs must be `https://` (SEC-07) |
+| Camera status/stream/capture/upload | Partial | upload requires mandatory separate `CAM_UPLOAD_TOKEN` (Phase 0); persisted snapshot served only by authenticated `GET /api/cam/latest`, no longer a public static asset (corrective review, was SEC-09); camera URLs must be `https://` (SEC-07) |
 | Rate limiting | Complete | only `/api/health` exempt; `DISABLE_RATE_LIMIT` dev/test-only (was API-03) |
 | Constant-time token compare | Complete | SHA-256 both sides then `crypto.timingSafeEqual` |
 | User registration/login | Missing | single static token |
@@ -105,7 +108,7 @@ Status legend:
 | Error states | Partial | camera error pane only |
 | Offline/retry behavior | Partial | SSE reconnects with bounded exponential backoff (cap 30 s) as of Phase 0; no retry queue yet (was UI-02) |
 | Event history table + filters | Complete | search + type + date filters |
-| Camera pane | Partial | no retry/stale indicator (UI-03) |
+| Camera pane | Partial | now fetches through authenticated `GET /api/cam/latest` and renders via a revoked-and-replaced object URL, with explicit loading/empty/401 states (corrective review); no retry/stale indicator yet (UI-03) |
 | PIN change UI | Complete | pin input + validation message |
 | Notifications | Partial | in-browser only; no push notifications |
 | Emergency-access UX | Missing | no duress or emergency override flow |
@@ -119,11 +122,11 @@ Status legend:
 | Feature | Status | Evidence / Notes |
 |---|---|---|
 | CI/CD | Missing | no `.github/` or pipeline |
-| Unit/integration/e2e tests | Complete | 35 assertions in `server/test/security.test.mjs` (Node built-in runner); dashboard + startup probes in `server/test/` (was GOV-04) |
+| Unit/integration/e2e tests | Complete | 62 assertions in `server/test/security.test.mjs` (Node built-in runner), covering auth, the startup configuration gate, and camera-media privacy; dashboard + startup probes and a full acceptance verifier in `server/test/` (was GOV-04) |
 | Dependency lockfile | Complete | lockfile committed; `npm audit fix` applied, 0 advisories remain (was GOV-05) |
 | Secret management | Broken | credentials committed publicly (SEC-01); rotation still an owner action |
-| `.gitignore` coverage | Partial | hardened by this audit; `app_config.h` now excluded |
-| Documentation | Partial | README + `.env.example` rewritten for Phase 0 auth model; still references some absent files (GOV-03) |
+| `.gitignore` coverage | Partial | hardened by this audit; `app_config.h` now excluded; camera snapshots and the scratch database excluded under `data/` |
+| Documentation | Partial | README + `.env.example` rewritten for the load-once-then-validate startup and the authenticated camera route; still references some absent files (GOV-03) |
 | Hardware documentation | Missing | no schematic/PCB/BOM |
 | Observability/logging | Partial | console logs; no metrics/tracing |
 | Environment separation | Partial | `.env.example` + `.env`; no per-stage configs |

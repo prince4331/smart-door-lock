@@ -3,7 +3,10 @@
 Audit date: 2026-09-16
 Baseline commit: `b0893d7` (branch `audit/full-codebase-baseline-20260916`)
 Updated 2026-09-17 to record the `server/test/` directory and the Phase 0
-authentication changes on `fix/phase-0-security-containment`.
+authentication changes on `fix/phase-0-security-containment`, and the
+corrective review pass the same day (camera media removed from the public
+static root; configuration now loaded once and validated before any service
+starts).
 
 ## 1. Component map
 
@@ -39,14 +42,17 @@ authentication changes on `fix/phase-0-security-containment`.
 │       └── platformio.ini
 ├── server/
 │   ├── src/index.js              Express API + MQTT client + SSE + lowdb
-│   ├── public/                   Dashboard SPA + camera snapshots
-│   │   ├── index.html            ~1160 lines, single-file dashboard
-│   │   └── cam/latest.jpg        Camera snapshot artifact
+│   ├── public/                   Dashboard SPA (static assets only)
+│   │   └── index.html            ~1160 lines, single-file dashboard
+│   ├── data/cam/latest.jpg       Camera snapshot at runtime — UNTRACKED,
+│   │                             never under public/, served only by the
+│   │                             authenticated GET /api/cam/latest route
 │   ├── package.json              Scripts: start, test
 │   ├── test/                     Node built-in runner suite + probes
-│   │   ├── security.test.mjs     Phase 0 auth regression tests
+│   │   ├── security.test.mjs     Phase 0 auth + startup + camera regression
 │   │   ├── probe-phase0.mjs      Startup/runtime probe (not in `npm test`)
-│   │   └── dashboard-phase0.mjs  Dashboard auth-flow probe (not in `npm test`)
+│   │   ├── dashboard-phase0.mjs  Dashboard auth-flow probe (not in `npm test`)
+│   │   └── verify-phase0.mjs     Full Phase 0 acceptance suite (not in `npm test`)
 │   ├── .env.example              Sanitized env template (present)
 │   ├── .env                      LOCAL ONLY — never tracked
 │   ├── render.yaml               Render web service deploy
@@ -66,7 +72,7 @@ authentication changes on `fix/phase-0-security-containment`.
 | Web framework | express | `package.json` |
 | Realtime | Server-Sent Events | `/api/stream`; dashboard consumes it via `fetch()` + `ReadableStream` as of Phase 0 (`EventSource` cannot set auth headers) |
 | DB | lowdb (JSON file store) | `db.data.events`, `db.write()` |
-| Auth | static shared tokens | `DASH_TOKEN` (dashboard) and `CAM_UPLOAD_TOKEN` (device upload), both mandatory; `API_KEY` removed in Phase 0 |
+| Auth | static shared tokens | `DASH_TOKEN` (dashboard) and `CAM_UPLOAD_TOKEN` (device upload), both mandatory, minimum 16 characters, validated before startup; `API_KEY` removed in Phase 0 |
 | Rate limiting | express-rate-limit | `package.json`, `/api/*` limiter |
 | Process mgmt | none (single node) | no PM2/supervisor config |
 
@@ -85,9 +91,10 @@ version changed).
 | Server deps | `npm ci` (in `server/`) | PASS — 7 advisories found at baseline, all resolved by `npm audit fix`, 0 remain |
 | Server syntax | `node --check src/index.js` | PASS |
 | Server boot | `node src/index.js` + `GET /api/health` | PASS — HTTP 200 |
-| Server tests | `npm test` | PASS — 35 assertions, `server/test/security.test.mjs` (Phase 0) |
-| Server boot probe | `node test/probe-phase0.mjs` | PASS — 21 checks, confirms fail-closed startup and no broker contact |
-| Dashboard probe | `node test/dashboard-phase0.mjs` | PASS — confirms Bearer-auth SSE + token-rejection path in the served UI |
+| Server tests | `npm test` | PASS — 62 assertions, `server/test/security.test.mjs` (Phase 0 + corrective review) |
+| Server boot probe | `node test/probe-phase0.mjs` | PASS — startup, auth matrix, and camera-media privacy checks; no broker contact |
+| Dashboard probe | `node test/dashboard-phase0.mjs` | PASS — 15 checks: Bearer-auth SSE, token-rejection path, authenticated camera loader |
+| Phase 0 acceptance | `node test/verify-phase0.mjs` | PASS — deps, syntax, `npm test`, fail-closed startup, HTTP probes, dashboard, secret scan, clean-tree gate |
 | Server lint | n/a — no `lint` script in package.json | NOT PRESENT |
 | Frontend build | n/a — no bundler, plain HTML | NOT PRESENT |
 | Mobile app | n/a — no mobile directory | NOT PRESENT |
@@ -97,14 +104,16 @@ version changed).
 1. **Mobile application** — none present, though the README describes app-style control.
 2. **Database migrations** — lowdb JSON file only; no schema, no migrations, no indexes.
 3. **Test suites** — at baseline there were none. Phase 0 added
-   `server/test/security.test.mjs` (auth regression coverage); the firmware
-   and dashboard visuals remain untested. No firmware build was verified —
-   the toolchain is absent.
+   `server/test/security.test.mjs` (auth, startup-gate, and camera-media
+   regression coverage, 62 assertions) plus two standalone probes and a full
+   acceptance verifier; the firmware and dashboard visuals remain untested.
+   No firmware build was verified — the toolchain is absent.
 4. **CI/CD** — no `.github/`, no pipeline definitions.
 5. **Hardware documentation** — no schematic, PCB, or bill of materials. `README.md` references `CIRCUIT_DIAGRAM.md` and `LICENSE`, neither of which exists in the workspace.
 6. **User accounts / multi-tenancy** — single shared static token; no users, roles, or device ownership.
 7. **MQTT broker config** — broker is external; no provisioning, ACL, or topic-authorization artifacts.
-8. **Backup/restore** — no strategy for `data.db`/`data.json`.
+8. **Backup/restore** — no strategy for `data.db`/`data.json` or for the
+   camera snapshots written under `data/cam`.
 9. **OTA signing artifacts** — OTA URL is empty; no signed-image policy.
 
 ## 6. Repository topology note

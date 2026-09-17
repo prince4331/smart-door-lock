@@ -27,4 +27,6 @@ Endpoints on ESP32-CAM:
 - `/stream` for MJPEG live feed
 - `/capture` for single JPEG snapshot
 
-The latest image is saved to `server/public/cam/latest.jpg` and shown on the dashboard.
+The latest image is saved to `server/data/cam/latest.jpg` — outside the public
+web root — and is shown on the dashboard, which fetches it through the
+authenticated `GET /api/cam/latest` route.

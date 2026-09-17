@@ -561,7 +561,45 @@ actuated. The test server was shut down after probing.
 
 This section was added after Phase 0 containment work. It records what changed
 relative to the findings above. The finding text above is unchanged and still
-describes the **baseline** state at `01d91cf`.
+describes the **baseline** state at `01d91cf` (the audit branch tip), which is
+**not** `main` — `main` on `smart-door-lock` is `a8337b1` and was never
+touched. Phase 0 was branched from `01d91cf`, not from `main`.
+
+### Corrective review pass (2026-09-17)
+
+An independent review of the Phase 0 branch found eight defects. They were
+corrected on the same branch, without rewriting history:
+
+1. **Camera media was publicly readable.** `public/cam/latest.jpg` was served
+   by `express.static` with no authentication, so a snapshot bypassed
+   `DASH_TOKEN` entirely. Corrected as SEC-09 above.
+2. **The test suite dirtied the working tree.** Camera-upload tests wrote
+   directly to the tracked JPEG. Corrected: database, camera storage and
+   generated env files now live in a per-run temporary directory removed on
+   teardown; the verifier fails if the tree gains any file it did not start
+   with.
+3. **The documented `.env` workflow did not actually work.** Configuration was
+   validated before `dotenv` loaded the file, so `cp .env.example .env &&
+   npm start` failed unless the tokens were also exported in the parent shell.
+   Corrected: the file is loaded once, then the effective configuration is
+   validated, then the listener is created. Process-env values still win.
+4. **`dotenv.config()` was called twice.** Now exactly once.
+5. **`express.json()` and `express.static()` were each mounted twice.** Now
+   each is mounted once, in a fixed order: security headers/CORS, body
+   parsing, public static assets, rate limiting, API authentication, API
+   routes, error handling.
+6. **Token length was never checked.** A short or guessable token passed
+   validation. A 16-character minimum is now enforced at startup.
+7. **`npm audit` output could be misparsed.** npm writes its JSON to stdout
+   and its warnings to stderr; the verifier merged the streams. They are now
+   kept separate.
+8. **The startup gate did not name the missing variable** in its exit
+   message. Every error now names the variable it is about.
+
+The reported `origin/main` revision in an earlier draft of the final report
+was wrong. `origin/main` is `a8337b1`; the audit baseline used as the Phase 0
+base is `01d91cf`. They are not the same commit and the distinction matters:
+nothing on `main` was modified.
 
 | Finding | Baseline severity | Phase 0 status |
 | --- | --- | --- |
@@ -578,7 +616,8 @@ describes the **baseline** state at `01d91cf`.
 | UI-02 — No offline/error states | Medium | **Partially fixed.** SSE reconnects with bounded exponential backoff (cap 30 s); a 401 clears the stored token and returns to login. |
 | GOV-01 — Nested `server/.git` | Medium | **Fixed.** `server/.git` was backed up out of the tree and removed from the working path; commits now land in the canonical repo only. |
 | GOV-02 — Two remotes, unrelated histories | Medium | **Fixed.** Remotes normalized to the canonical repository. The `iotlabesp` history-exposure question remains an owner decision (blocker 2). |
-| GOV-04 — Zero tests | High | **Fixed.** 35 assertions in `server/test/security.test.mjs` (Node built-in runner, placeholder tokens, inert MQTT stub). |
+| GOV-04 — Zero tests | High | **Fixed.** 62 assertions in `server/test/security.test.mjs` (Node built-in runner, placeholder tokens, inert MQTT stub), plus three harnesses outside `npm test`. |
+| SEC-09 — Camera media served without authentication | High | **Fixed.** The persisted snapshot no longer lives under `public/`. It is stored outside the static root and served only by `GET /api/cam/latest`, which requires `DASH_TOKEN` and sends `Cache-Control: no-store, private`. The legacy `/cam/latest.jpg` path returns 404. The dashboard fetches the snapshot with a Bearer header and holds it as a short-lived object URL, revoked on logout, so the token never appears in a URL, in the DOM, or in a log. |
 | GOV-05 — Vulnerable dependencies | Medium | **Fixed.** `npm audit fix` (no `--force`) — 11 packages changed, 1 removed, 0 advisories remaining. |
 
 ### What Phase 0 deliberately did not do
@@ -607,14 +646,18 @@ review-only:
 
 | Check | Command | Result |
 | --- | --- | --- |
-| Test suite | `npm test` | PASS — 35 assertions, 0 failures, exit 0 |
-| Dependency advisories | `npm audit` | PASS — 0 vulnerabilities |
+| Test suite | `npm test` | PASS — 62 assertions, 0 failures, exit 0 |
+| Dependency advisories | `npm audit` | PASS — 0 vulnerabilities (stdout parsed; stderr kept separate) |
 | Live startup, valid config | `node src/index.js` | PASS — boots and listens |
-| Live startup, missing token | `node src/index.js` (no `DASH_TOKEN`) | PASS — refuses to listen, non-zero exit |
+| Live startup, missing token | `node src/index.js` (no `DASH_TOKEN`) | PASS — refuses to listen, non-zero exit, names the variable |
 | Control endpoint, no token | `POST /api/command` | PASS — 401 |
 | Read endpoint, no token | `GET /api/state` | PASS — 401 (was 200 at baseline) |
 | SSE, no token | `GET /api/stream` | PASS — 401 (was open at baseline) |
-| Dashboard verification | `node test/dashboard-phase0.mjs` | PASS — 13/13 checks |
+| Camera media, no token | `GET /api/cam/latest` | PASS — 401 |
+| Camera media, legacy public path | `GET /cam/latest.jpg` | PASS — 404 (was served anonymously at baseline) |
+| Dashboard verification | `node test/dashboard-phase0.mjs` | PASS — 15/15 checks |
+| Route probe | `node test/probe-phase0.mjs` | PASS — full auth matrix, snapshot privacy |
+| Working-tree hygiene | `git status --porcelain` | PASS — baseline diff before/after every run |
 | Broker isolation | server log scan | PASS — no `Connected to mqtt://` line during any test or probe |
 
 No production broker, database, or hardware was contacted during Phase 0. All

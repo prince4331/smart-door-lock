@@ -4,7 +4,10 @@ Audit date: 2026-09-16
 Baseline commit: `b0893d7` (branch `audit/full-codebase-baseline-20260916`)
 
 Trust-boundary and flow descriptions were updated 2026-09-17 to match the
-Phase 0 containment work on branch `fix/phase-0-security-containment`.
+Phase 0 containment work on branch `fix/phase-0-security-containment`, and
+updated again the same day for the corrective review pass: persisted camera
+media is no longer a static asset, and the environment file is resolved,
+loaded once, and validated before any service is created.
 
 This document describes what is **implemented**, not what is documented. For
 documented-vs-implemented gaps see `FEATURE_COMPLETENESS_MATRIX.md`.
@@ -90,9 +93,23 @@ documented-vs-implemented gaps see `FEATURE_COMPLETENESS_MATRIX.md`.
 
 - ESP32-CAM publishes JPEG frames in chunks to `smartlock/cam/chunk` with a
   metadata message to `smartlock/cam/meta` (`firmware/esp32cam/src/main.cpp`).
-- Server reassembles into `server/public/cam/latest.jpg` and exposes
-  `/api/cam/status`, `/api/cam/stream` (proxy to camera), and
-  `/api/cam/capture`.
+- Server reassembles and persists the latest frame to
+  `server/data/cam/latest.jpg` (`CAM_STORAGE_DIR`, default `./data/cam`) —
+  **outside** the public static root, untracked — and exposes
+  `/api/cam/status`, `/api/cam/stream` (proxy to camera), `/api/cam/capture`,
+  and `GET /api/cam/latest`.
+- The dashboard never names the snapshot file. It fetches
+  `/api/cam/latest` with `Authorization: Bearer`, turns the response into a
+  blob object URL, revokes the previous URL, and points the `<img>` at it;
+  a 401 returns the user to the login state and a 404 shows the placeholder.
+- Phase 0 corrective pass: this file used to live at
+  `server/public/cam/latest.jpg` and was served anonymously by
+  `express.static`. The legacy path now returns a hard 404 — anonymous *and*
+  authenticated — and the snapshot is reachable only through authenticated
+  `GET /api/cam/latest`. The route additionally resolves the file with
+  `fs.realpathSync` and rejects anything that does not resolve to
+  `<camDir>/latest.jpg`, so traversal and symlink substitution both fail
+  closed.
 - Lock firmware can trigger a capture via a UART byte to the camera
   (`CAM_UART_TRIGGER_BYTE` in `app_config.h`).
 
@@ -107,7 +124,8 @@ documented-vs-implemented gaps see `FEATURE_COMPLETENESS_MATRIX.md`.
 
 | # | Boundary | Mechanism (as implemented) | Verdict |
 |---|----------|---------------------------|---------|
-| TB1 | Internet → Backend | Static shared `DASH_TOKEN`; constant-time compare; startup fails closed if unset | Single shared secret, no users |
+| TB1 | Internet → Backend | Static shared `DASH_TOKEN`; constant-time compare; startup resolves the env file, loads it once, then validates and exits before the listener, MQTT, camera, Telegram or database is touched if the token is missing, empty or under 16 characters | Single shared secret, no users |
+| TB3a | Internet → persisted camera media | Snapshot written outside the public static root; served only by authenticated `GET /api/cam/latest`; the removed public path returns a hard 404 | Closed by the corrective review (was SEC-09) |
 | TB2 | Backend → Device | MQTT over TLS 8883; command carries nonce+timestamp | Replay window 300 s, nonce not tracked |
 | TB3 | Browser → Backend | `Authorization: Bearer` on every `/api/*` route except `/api/health` | Closed by Phase 0 (was SEC-04) |
 | TB4 | Camera → Backend | `CAM_UPLOAD_TOKEN` as Bearer or `X-Cam-Token` on `/api/cam/upload`; mandatory | Closed by Phase 0 (was optional and fail-open) |
@@ -142,7 +160,6 @@ Hardware pins are defined in `app_config.h` and `servo_control.h`. Per the
 audit ground rules, **no pin assignment was modified**.
 
 ## 6. Repository and history topology (as found)
-
 The workspace is one Git repository at the project root with two remotes:
 
 - `origin` → `github.com/prince4331/iotlabesp`, default branch `master`.

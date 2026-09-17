@@ -11,7 +11,15 @@ Phases are ordered by risk: earlier phases remove active exposure; later
 phases add capability. Do not skip Phase 0.
 
 Status legend: **DONE** = implemented on branch `fix/phase-0-security-containment`
-and covered by `server/test/security.test.mjs`. Anything unmarked remains open.
+and covered by `server/test/security.test.mjs` or `server/test/verify-phase0.mjs`.
+Anything unmarked remains open.
+
+A corrective review pass on 2026-09-17 closed the remaining gaps in the Phase 0
+items below: the persisted camera snapshot is no longer a static asset
+(0.7), the environment file is resolved, loaded once, and validated before any
+service is created (0.3, 0.8), duplicate `express.json()` / `express.static()`
+mounts were collapsed, and every runtime test artifact now lands in a per-run
+temporary directory. No item outside Phase 0 was started.
 
 ---
 
@@ -24,10 +32,12 @@ changes; purely containment.
 |---|--------|-----------|--------|--------|
 | 0.1 | Rotate Wi-Fi password, MQTT broker account, Telegram bot token, and the default PIN on every device | SEC-01, SEC-02 | Owner action, out of band | **Open — owner action, cannot be done in code** |
 | 0.2 | Keep `firmware/include/app_config.h` and camera credentials out of source control via the `.gitignore` rule added by this audit; onboard via `app_config_example.h` | SEC-01 | Done in baseline | **DONE in baseline** |
-| 0.3 | Make `authenticateAccessToken` fail closed when `DASH_TOKEN` is unset | SEC-03 | Small | **DONE** |
+| 0.3 | Make `authenticateAccessToken` fail closed when `DASH_TOKEN` is unset | SEC-03 | Small | **DONE — and the corrective review moved the gate ahead of service creation: the env file is resolved, loaded once, then validated, and the process exits before the listener, MQTT, camera, Telegram or database is touched** |
 | 0.4 | Add authentication to `/api/state`, `/api/events`, `/api/stream`, and the camera proxy routes; remove them from the rate-limit `skip` list | SEC-04 | Small | **DONE** |
 | 0.5 | Require `https://` plus a camera token for `CAM_SNAPSHOT_URL` / `CAM_STREAM_URL` | SEC-07 | Small | **PARTIAL — https:// enforced at startup; camera token required on upload** |
 | 0.6 | Decide canonical repository; treat `iotlabesp` history as exposed and rotate accordingly | GOV-01, GOV-02 | Decision | **Remotes normalized; history-exposure decision still open (see AUDIT_REPORT SEC-01)** |
+| 0.7 | Serve persisted camera media only through an authenticated route, never from the public static root | SEC-09 | Small | **DONE — corrective review removed the tracked `public/cam/latest.jpg` from source control and the static mount; the legacy path is a hard 404 and the snapshot is served only by authenticated `GET /api/cam/latest`** |
+| 0.8 | Enforce a minimum token length so a short or guessable token cannot pass startup validation | SEC-03 | Small | **DONE** |
 
 Phase 0 additionally delivered, beyond the original list:
 
@@ -41,18 +51,53 @@ Phase 0 additionally delivered, beyond the original list:
   and a 401 → login-state transition (UI-02, 5.1).
 - `DISABLE_RATE_LIMIT` is now honoured only in development/test; the limiter
   always runs otherwise (API-03, pulled forward from Phase 4.5).
-- 35 automated regression assertions in `server/test/security.test.mjs`, plus
-  dashboard and live-startup probes in `server/test/`.
+- 62 automated regression assertions in `server/test/security.test.mjs`, plus
+  dashboard and live-startup probes in `server/test/`. The corrective review
+  added coverage for the startup configuration gate, camera-media privacy, and
+  the fail-closed paths around the relocated snapshot.
+- A full acceptance verifier, `server/test/verify-phase0.mjs`, runs the whole
+  Phase 0 checklist in one pass: dependency integrity and `npm audit`, syntax
+  of every shipped module, `npm test`, fail-closed startup with a missing
+  token, a healthy startup that must keep listening, the HTTP auth matrix,
+  camera-media probes, the dashboard probe, a secret scan of tracked files,
+  and a baseline-diff clean-tree gate that fails the suite itself if any run
+  leaves the working tree dirty.
+- Fail-closed startup that loads the environment file exactly once, then
+  validates the effective configuration, and exits naming the missing
+  variable before the listener, MQTT, camera, Telegram or database is
+  created. The documented `cp .env.example .env && npm start` workflow now
+  works, and process-env values still take precedence over the file.
+- Every runtime artifact — database, camera storage, generated env files — is
+  written to a per-run temporary directory removed on teardown, so neither
+  the test suite nor the verification harness can leave the working tree
+  dirty. The verifier hard-fails if it does.
 - Dependency advisories remediated with `npm audit fix` (no `--force`), 11
   packages changed, 1 removed, 0 remaining (GOV-05, pulled forward from 1.5).
 - Unused `API_KEY` machine-to-machine path and its dead `authenticateApiKey`
   middleware were removed, along with the now-unreferenced `API_KEY` entry in
   `server/.env.example`. No route depended on them.
+- Middleware de-duplicated and re-ordered: security headers/CORS → request
+  parsing → public static dashboard assets → rate limiting → `/api/`
+  authentication → API routes → error handler. `express.json()` and
+  `express.static()` had each been mounted twice.
+- The persisted camera snapshot was removed from the public static root
+  entirely (`public/cam/latest.jpg` is no longer tracked; the directory is
+  gone). It is written to `server/data/cam/` — untracked, outside the web
+  root — and served only by authenticated `GET /api/cam/latest`. The legacy
+  `/cam/latest.jpg` path returns a hard 404. The dashboard loads it via a
+  blob/object URL, so no token is ever placed in a URL.
 - Repository normalized in this phase: `server/.git` nested repository moved
   out of the tree, remotes reduced to the canonical
   `github.com/prince4331/smart-door-lock`, and the branch
   `fix/phase-0-security-containment` is the only branch carrying these
   changes. Never merged into `main`; review only.
+- Corrective review pass (2026-09-17): `express.json()` and
+  `express.static()` are each mounted exactly once, in the documented order;
+  `dotenv.config()` is called exactly once; the camera pane in the dashboard
+  fetches through the authenticated route and renders via a revoked blob
+  object URL; the tracked `public/cam/latest.jpg` was removed from source
+  control (its history exposure is a recommendation to rotate, not a new
+  incident — see AUDIT_REPORT SEC-09).
 
 Exit criteria: no credential readable from any branch; no unauthenticated
 `/api/*` response other than a health probe; control endpoints fail closed.
