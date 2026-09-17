@@ -3,17 +3,25 @@
 // of every route. Points at an unreachable loopback broker address so that no
 // real broker is ever contacted: publish callbacks never fire, so the control
 // endpoints that depend on them are expected to hang and are not asserted.
+// All runtime artifacts land in a per-run temporary directory, so the probe
+// never writes into the working tree.
 // Run with: node test/probe-phase0.mjs
 import { spawn } from "node:child_process";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import http from "node:http";
 import net from "node:net";
+import os from "node:os";
 import path from "node:path";
 
 const DASH = crypto.randomBytes(32).toString("hex");
 const CAM = crypto.randomBytes(32).toString("hex");
-const PROBE_DB = path.join(import.meta.dirname, "..", "data.probe.db");
+
+// Per-run scratch directory: database, camera storage and any generated env
+// file all live here and are removed wholesale on exit.
+const SCRATCH = fs.mkdtempSync(path.join(os.tmpdir(), "smartlock-probe-"));
+const PROBE_DB = path.join(SCRATCH, "data.probe.db");
+const PROBE_CAM = path.join(SCRATCH, "cam");
 
 function freePort() {
   return new Promise((resolve, reject) => {
@@ -62,7 +70,8 @@ const env = {
   SYSTEMROOT: process.env.SYSTEMROOT || "",
   DASH_TOKEN: DASH,
   CAM_UPLOAD_TOKEN: CAM,
-  DB_PATH: path.join(import.meta.dirname, "..", "data.probe.db"),
+  DB_PATH: PROBE_DB,
+  CAM_STORAGE_DIR: PROBE_CAM,
   // Nothing is listening on this loopback address, so the client cannot
   // connect to any broker — production infrastructure is never contacted.
   MQTT_BROKER: "mqtt://127.0.0.1:18830",
@@ -88,7 +97,9 @@ function killChild() {
 }
 process.on("exit", () => {
   killChild();
-  try { fs.unlinkSync(PROBE_DB); } catch (e) { /* may not exist */ }
+  // The whole scratch directory goes away, so no probe artifact can outlive
+  // the run and pollute the working tree.
+  fs.rmSync(SCRATCH, { recursive: true, force: true });
 });
 process.on("SIGINT", () => { killChild(); process.exit(130); });
 
@@ -137,6 +148,16 @@ process.on("SIGINT", () => { killChild(); process.exit(130); });
 
   console.log("\n== Camera control (dashboard token) ==");
   await check("POST /api/cam/capture Bearer", 502, await P("/api/cam/capture", { ...B(DASH), method: "POST" }));
+
+  console.log("\n== Persisted snapshot is not a public asset ==");
+  // The snapshot route serves bytes only with a dashboard token, and the
+  // legacy public path is gone rather than redirected. An upload ran above,
+  // so a dashboard token reads the image back; an anonymous read cannot.
+  await check("GET /api/cam/latest anonymous", 401, await P("/api/cam/latest"));
+  await check("GET /api/cam/latest dashboard token", 200, await P("/api/cam/latest", B(DASH)));
+  await check("GET /api/cam/latest camera device token", 401, await P("/api/cam/latest", B(CAM)));
+  await check("GET /cam/latest.jpg removed public path", 404, await P("/cam/latest.jpg"));
+  await check("GET /cam/latest.jpg with dashboard token", 404, await P("/cam/latest.jpg", B(DASH)));
 
   if (/Connected to mqtt:\/\//.test(serverLog)) {
     console.log("ERROR: the process connected to an MQTT broker. Test must not.");

@@ -16,16 +16,30 @@ import { spawn } from "node:child_process";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import net from "node:net";
+import os from "node:os";
 import path from "node:path";
 import readline from "node:readline";
 import http from "node:http";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
+// Every runtime artifact lands here and is removed on exit, so the verifier
+// can never leave the working tree dirty the way a probe DB in the tree did.
+const SCRATCH = fs.mkdtempSync(path.join(os.tmpdir(), "smartlock-verify-"));
+
 let exitCode = 0;
 function check(name, ok, detail = "") {
   if (!ok) exitCode = 1;
   console.log(`${ok ? "PASS" : "FAIL"}  ${name.padEnd(52)} ${detail}`);
 }
+
+// The verifier must not be able to pass while leaving the tree dirty, so the
+// state before anything runs is recorded and compared against the state at
+// the end. Only entries that already existed may still be there.
+const baselineStatus = (await run("git", ["status", "--porcelain"], { cwd: ROOT })).out
+  .split(/\r?\n/).filter(Boolean);
+const baselineFiles = new Set(
+  baselineStatus.map((l) => l.slice(3)).map((f) => f.replace(/^"(.*)"$/, "$1"))
+);
 
 // On Windows, npm is npm.cmd; child_process.spawn without a shell cannot
 // resolve it, and passing shell:true there would re-split absolute paths on
@@ -35,11 +49,19 @@ const NPM = process.platform === "win32" ? "npm.cmd" : "npm";
 function run(cmd, args, { env = process.env, cwd, timeout = 180000 } = {}) {
   return new Promise((resolve) => {
     const c = spawn(cmd, args, { env, cwd, stdio: ["ignore", "pipe", "pipe"] });
+    // stdout and stderr are kept apart. npm writes human warnings to stderr
+    // even when --json is asked for; merging the streams made those warnings
+    // part of the JSON document and the audit step could then report a
+    // failure that was never one.
     let out = "";
+    let err = "";
     c.stdout.on("data", (d) => (out += d));
-    c.stderr.on("data", (d) => (out += d));
+    c.stderr.on("data", (d) => (err += d));
     const t = setTimeout(() => { try { c.kill("SIGKILL"); } catch (e) {} }, timeout);
-    c.on("exit", (code, sig) => { clearTimeout(t); resolve({ code: code === null ? -1 : code, out }); });
+    c.on("exit", (code, sig) => {
+      clearTimeout(t);
+      resolve({ code: code === null ? -1 : code, out, err, combined: out + err });
+    });
   });
 }
 
@@ -83,13 +105,27 @@ check("lockfile names this package", lockParsed && lockParsed.name === "smartloc
 
 // `npm audit` runs in a child process with a shell only for this one call,
 // because npm is a .cmd shim on Windows. The command is a fixed literal.
+// cwd must be pinned: without a package.json npm exits ENOLOCK and reports no
+// vulnerability metadata at all, which reads as a failure but is not one.
 const audit = await run(process.platform === "win32" ? process.env.ComSpec || "cmd.exe" : "npm",
   process.platform === "win32" ? ["/d", "/s", "/c", "npm audit --json"] : ["audit", "--json"],
-  { shell: false, timeout: 180000 });
+  { shell: false, cwd: ROOT, timeout: 180000 });
+// Only stdout is the JSON document. npm emits deprecation and funding notices
+// to stderr regardless of --json; reading the combined streams made those
+// look like an audit failure.
 let auditOk = false;
-try { auditOk = JSON.parse(audit.out).metadata.vulnerabilities.total === 0; }
-catch (e) { auditOk = false; }
-check("npm audit reports zero vulnerabilities", auditOk);
+let auditDetail = "";
+try {
+  const parsed = JSON.parse(audit.out);
+  const total = parsed && parsed.metadata && parsed.metadata.vulnerabilities
+    ? parsed.metadata.vulnerabilities.total : null;
+  auditOk = total === 0;
+  auditDetail = total === null ? "no vulnerability metadata" : `${total} vulnerability(ies)`;
+} catch (e) {
+  auditDetail = `unparsed stdout: ${audit.out.slice(0, 80)}`;
+  if (audit.err) auditDetail += ` | stderr: ${audit.err.trim().slice(0, 80)}`;
+}
+check("npm audit reports zero vulnerabilities", auditOk, auditDetail);
 
 // ---- 2. syntax of every shipped module ---------------------------------------
 console.log("\n== 2. Syntax ==");
@@ -114,7 +150,8 @@ console.log("\n== 4. Fail-closed startup ==");
 const DASH = crypto.randomBytes(32).toString("hex");
 const CAM = crypto.randomBytes(32).toString("hex");
 const PORT = String(await freePort());
-const VERIFY_DB = path.join(ROOT, "data.verify.db");
+const VERIFY_DB = path.join(SCRATCH, "data.verify.db");
+const CAM_DIR = path.join(SCRATCH, "cam");
 // Explicit environment only: the developer .env must not leak into the probe
 // process, otherwise a missing DASH_TOKEN would be silently supplied from disk.
 const baseEnv = {
@@ -122,23 +159,69 @@ const baseEnv = {
   SYSTEMROOT: process.env.SYSTEMROOT || "",
   CAM_UPLOAD_TOKEN: CAM,
   DB_PATH: VERIFY_DB,
+  CAM_STORAGE_DIR: CAM_DIR,
   MQTT_BROKER: "mqtt://127.0.0.1:18830",   // unreachable: never contacted
   MQTT_USERNAME: "", MQTT_PASSWORD: "", TG_BOT_TOKEN: "", TG_CHAT_ID: "",
   NODE_ENV: "development", DISABLE_RATE_LIMIT: "1", PORT,
 };
 
-// No DASH_TOKEN at all: the startup gate must refuse to listen.
-const noTokenEnv = { ...baseEnv };
+// A generated env file exercises the documented workflow end to end: the
+// tokens are supplied by the file, not by the parent shell.
+const ENV_FILE = path.join(SCRATCH, ".env.verify");
+fs.writeFileSync(ENV_FILE,
+  "DASH_TOKEN=" + DASH + "\nCAM_UPLOAD_TOKEN=" + CAM + "\nPORT=" + PORT + "\n");
+check("generated .env is written for the startup probe", fs.existsSync(ENV_FILE));
 
-const badStart = await run(process.execPath, [path.join(ROOT, "src", "index.js")], { env: noTokenEnv, timeout: 20000 });
+// No DASH_TOKEN at all: the startup gate must refuse to listen. The env file
+// used here deliberately omits it, so the only way to boot would be a token
+// leaking in from somewhere else.
+const NO_TOKEN_ENV_FILE = path.join(SCRATCH, ".env.verify-no-token");
+fs.writeFileSync(NO_TOKEN_ENV_FILE, "CAM_UPLOAD_TOKEN=" + CAM + "\nPORT=" + PORT + "\n");
+const badStart = await run(process.execPath, [path.join(ROOT, "src", "index.js")],
+  { env: { PATH: process.env.PATH, SYSTEMROOT: process.env.SYSTEMROOT || "",
+      NODE_ENV: "development", DOTENV_CONFIG_PATH: NO_TOKEN_ENV_FILE,
+      DB_PATH: VERIFY_DB, CAM_STORAGE_DIR: CAM_DIR,
+      MQTT_BROKER: "mqtt://127.0.0.1:18830", MQTT_USERNAME: "", MQTT_PASSWORD: "",
+      TG_BOT_TOKEN: "", TG_CHAT_ID: "", DISABLE_RATE_LIMIT: "1", PORT },
+    timeout: 20000 });
 check("missing DASH_TOKEN exits non-zero", badStart.code !== 0, `exit ${badStart.code}`);
-check("missing DASH_TOKEN reports the variable name", /DASH_TOKEN/.test(badStart.out));
-check("missing DASH_TOKEN never prints 'Server running'", !/Server running/.test(badStart.out));
-check("missing DASH_TOKEN never connects to MQTT", !/Connected to mqtt:\/\//.test(badStart.out));
+check("missing DASH_TOKEN terminates without hanging", badStart.code !== -1, `exit ${badStart.code}`);
+// The error lines go to stderr, so both streams are inspected. The negative
+// checks read both as well: a banner or a broker connection printed to stderr
+// would be just as much of a failure.
+const badStartOutput = badStart.out + "\n" + badStart.err;
+check("missing DASH_TOKEN reports the variable name", /DASH_TOKEN/.test(badStartOutput));
+check("missing DASH_TOKEN never prints 'Server running'", !/Server running/.test(badStartOutput));
+check("missing DASH_TOKEN never connects to MQTT", !/Connected to mqtt:\/\//.test(badStartOutput));
+
+// A healthy startup does NOT exit on its own: the MQTT client keeps a
+// reconnect timer alive in production. The verifier therefore asserts the
+// listening banner within a short window, then kills the process itself.
+// A natural exit during that window would be a failure.
+const healthyStart = await new Promise((resolve) => {
+  const c = spawn(process.execPath, [path.join(ROOT, "src", "index.js")],
+    { cwd: ROOT, env: { ...baseEnv, DOTENV_CONFIG_PATH: ENV_FILE }, stdio: ["ignore", "pipe", "pipe"] });
+  let out = "";
+  c.stdout.on("data", (d) => (out += d));
+  c.stderr.on("data", (d) => (out += d));
+  const t = setTimeout(() => { try { c.kill("SIGKILL"); } catch (e) {} resolve({ timedOut: true, out }); }, 6000);
+  c.on("exit", (code) => { clearTimeout(t); resolve({ timedOut: false, out, code: code === null ? -1 : code }); });
+});
+check("valid env file brings the server up and keeps it up",
+  /Server running/.test(healthyStart.out) && healthyStart.timedOut,
+  healthyStart.timedOut ? "still listening at timeout" : `exited ${healthyStart.code}`);
+check("valid env file supplies the tokens, not the parent shell",
+  /Server running/.test(healthyStart.out) && !/DASH_TOKEN/.test(healthyStart.out));
 
 // ---- 5. valid startup + HTTP probes ------------------------------------------
 console.log("\n== 5. Valid startup and HTTP probes ==");
-const goodEnv = { ...baseEnv, DASH_TOKEN: DASH };
+// The tokens come from the generated env file, which is the documented
+// workflow; the process environment carries only the scratch paths.
+const goodEnv = { PATH: process.env.PATH, SYSTEMROOT: process.env.SYSTEMROOT || "",
+  NODE_ENV: "development", DOTENV_CONFIG_PATH: ENV_FILE,
+  DB_PATH: VERIFY_DB, CAM_STORAGE_DIR: CAM_DIR,
+  MQTT_BROKER: "mqtt://127.0.0.1:18830", MQTT_USERNAME: "", MQTT_PASSWORD: "",
+  TG_BOT_TOKEN: "", TG_CHAT_ID: "", DISABLE_RATE_LIMIT: "1", PORT };
 const child = spawn(process.execPath, [path.join(ROOT, "src", "index.js")], { cwd: ROOT, env: goodEnv, stdio: ["ignore", "pipe", "pipe"] });
 let serverLog = "";
 child.stdout.on("data", (c) => (serverLog += c.toString()));
@@ -180,8 +263,37 @@ const cmd = await new Promise((resolve) => {
 check("authenticated POST /api/command reaches the publish step",
   cmd.status === 200 || cmd.status === "TIMEOUT", `status ${cmd.status}`);
 check("server never contacted the MQTT broker", !/Connected to mqtt:\/\//.test(serverLog));
+
+// Camera media privacy: the persisted snapshot is served only through the
+// authenticated route, and the removed public path stays gone.
+const mediaAnon = await get(Number(PORT), "/api/cam/latest");
+check("anonymous /api/cam/latest is 401", mediaAnon.status === 401, mediaAnon.body.slice(0, 32));
+
+// A real device upload lands in the scratch storage directory, then the same
+// dashboard token can read it back. Nothing else is authorised to.
+const uploaded = "verify-snapshot";
+const upload = await new Promise((resolve) => {
+  const req = http.request({ host: "127.0.0.1", port: Number(PORT), path: "/api/cam/upload", method: "POST",
+    headers: { "x-cam-token": CAM, "Content-Type": "image/jpeg", "Content-Length": Buffer.byteLength(uploaded) } },
+    (res) => { let b = ""; res.on("data", (c) => (b += c)); res.on("end", () => { req.socket.destroy(); resolve({ status: res.statusCode, b }); }); });
+  req.on("error", (e) => resolve({ status: "ERR", b: e.message }));
+  req.end(uploaded);
+});
+check("camera upload with the device token is 200", upload.status === 200, `status ${upload.status}`);
+
+const latest = await get(Number(PORT), "/api/cam/latest", { bearer: DASH });
+check("dashboard token reads the uploaded snapshot", latest.status === 200 && latest.body === uploaded,
+  `status ${latest.status}`);
+check("snapshot storage stays outside the public root",
+  !fs.existsSync(path.join(ROOT, "public", "cam", "latest.jpg")),
+  "public/cam must be gone");
+
+const removed = await get(Number(PORT), "/cam/latest.jpg");
+check("/cam/latest.jpg is gone", removed.status === 404, `status ${removed.status}`);
+
 killChild();
-if (fs.existsSync(VERIFY_DB)) fs.unlinkSync(VERIFY_DB);
+// The whole scratch directory goes away, so no artifact can outlive the run.
+fs.rmSync(SCRATCH, { recursive: true, force: true });
 
 // ---- 6. dashboard probe --------------------------------------------------------
 console.log("\n== 6. Dashboard auth flow ==");
@@ -216,9 +328,31 @@ check("no .env, .db, .pem or .key left in the working tree", stray.length === 0,
 const wsCheck = await run("git", ["diff", "--check"], { cwd: ROOT });
 check("git diff --check is clean", wsCheck.code === 0, wsCheck.out.trim().slice(0, 60));
 
+// No camera snapshot may remain anywhere under the public root: it is the one
+// artifact this suite creates that used to be committed, and finding it here
+// means the relocation or the route failed closed.
+const publicCamDir = path.join(ROOT, "public", "cam");
+check("no camera snapshot left under the public root",
+  !fs.existsSync(publicCamDir), fs.existsSync(publicCamDir) ? "public/cam exists" : "");
+
+// The decisive gate. The verifier writes nothing into the working tree: every
+// artifact it creates goes into the scratch temporary directory. So the only
+// pollution it can produce is a *new* untracked runtime file — a probe
+// database or a camera snapshot left behind in the tree, which is exactly the
+// defect this suite used to have. Tracked-file modifications are not counted,
+// because editing a tracked source file between the baseline and this point
+// is a legitimate change, not pollution.
 const status2 = await run("git", ["status", "--porcelain"], { cwd: ROOT });
+const leftover = status2.out.split(/\r?\n/).filter(Boolean);
+const newUntracked = leftover
+  .filter((l) => /^(\?\?|A )/.test(l))
+  .map((l) => l.slice(3).replace(/^"(.*)"$/, "$1"))
+  .filter((f) => !baselineFiles.has(f));
+check("no new untracked runtime file is left behind",
+  newUntracked.length === 0, newUntracked.length ? newUntracked.slice(0, 4).join(", ") : "");
+
 console.log("\nWorking tree at end of verification:");
-for (const l of status2.out.split(/\r?\n/).filter(Boolean)) console.log("  " + l);
+for (const l of leftover) console.log("  " + l);
 
 console.log(exitCode ? "\nPHASE 0 VERIFICATION FAILED" : "\nPHASE 0 VERIFICATION PASSED");
 process.exit(exitCode);

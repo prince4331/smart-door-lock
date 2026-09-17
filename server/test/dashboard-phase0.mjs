@@ -3,7 +3,8 @@
 // Serves public/index.html from the real server and drives the dashboard's
 // auth flows against it: an authenticated session reaches the SSE stream and
 // can issue a control command; an anonymous session is rejected; a 401
-// returns the UI to the login state.
+// returns the UI to the login state. Runtime artifacts are written to a
+// per-run temporary directory, never the working tree.
 //
 // Run with: node test/dashboard-phase0.mjs
 import { spawn } from "node:child_process";
@@ -11,12 +12,15 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import http from "node:http";
 import net from "node:net";
+import os from "node:os";
 import path from "node:path";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 const DASH = crypto.randomBytes(32).toString("hex");
 const CAM = crypto.randomBytes(32).toString("hex");
-const PROBE_DB = path.join(ROOT, "data.probe.db");
+const SCRATCH = fs.mkdtempSync(path.join(os.tmpdir(), "smartlock-dash-"));
+const PROBE_DB = path.join(SCRATCH, "data.probe.db");
+const CAM_DIR = path.join(SCRATCH, "cam");
 
 function freePort() {
   return new Promise((resolve, reject) => {
@@ -64,6 +68,7 @@ const env = {
   DASH_TOKEN: DASH,
   CAM_UPLOAD_TOKEN: CAM,
   DB_PATH: PROBE_DB,
+  CAM_STORAGE_DIR: CAM_DIR,
   MQTT_BROKER: "mqtt://127.0.0.1:18830",   // unreachable: no broker is ever contacted
   MQTT_USERNAME: "",
   MQTT_PASSWORD: "",
@@ -83,7 +88,9 @@ child.stderr.on("data", (c) => (serverLog += c.toString()));
 const killChild = () => { if (!child.killed) { try { child.kill("SIGKILL"); } catch (e) {} } };
 process.on("exit", () => {
   killChild();
-  try { fs.unlinkSync(PROBE_DB); } catch (e) { /* may not exist */ }
+  // The whole scratch directory is removed, so no probe artifact can outlive
+  // the run and pollute the working tree.
+  fs.rmSync(SCRATCH, { recursive: true, force: true });
 });
 
 (async () => {
@@ -103,6 +110,13 @@ process.on("exit", () => {
   check("no token is placed in a URL", !/access_token=/.test(page.body));
   check("fetch-based SSE client is present", /fetch\(\s*['"`]\/api\/stream/.test(page.body));
   check("Authorization Bearer is sent", /Bearer\s*['"`]?\s*\$\{?ACCESS_TOKEN/.test(page.body));
+  // The camera snapshot is fetched through the tokened API and turned into an
+  // object URL, so neither the URL nor the DOM may carry a token, and the
+  // removed public path must no longer appear in the page.
+  check("no public camera path remains", !/\/cam\/latest\.jpg/.test(page.body));
+  check("camera is loaded as a private API asset", /\/api\/cam\/latest/.test(page.body));
+  check("snapshot becomes an object URL", /createObjectURL/.test(page.body)
+    && /revokeObjectURL/.test(page.body));
 
   // An authenticated browser session can read state and open the stream.
   const state = await get(PORT, "/api/state", { bearer: DASH });
@@ -140,11 +154,23 @@ process.on("exit", () => {
   const anonStream = await get(PORT, "/api/stream");
   check("unauthenticated stream is denied", anonStream.status === 401, anonStream.body.slice(0, 32));
 
-  // The camera static asset is public (it is fetched as an <img> src), while
-  // the APIs that return state require a token.
+  // The camera snapshot is no longer a public static asset: the dashboard
+  // fetches it through the tokened API and turns it into an object URL, while
+  // the legacy public path is gone.
   const img = await get(PORT, "/cam/latest.jpg");
-  check("camera snapshot asset is served", img.status === 200 || img.status === 404,
-    `status ${img.status}`);
+  check("legacy public camera path is gone (404)", img.status === 404, `status ${img.status}`);
+
+  const latestAnon = await get(PORT, "/api/cam/latest");
+  check("snapshot route anonymous is 401", latestAnon.status === 401, `status ${latestAnon.status}`);
+
+  const latest = await get(PORT, "/api/cam/latest", { bearer: DASH });
+  check("snapshot route with dashboard token", latest.status === 200 || latest.status === 404,
+    `status ${latest.status}`);
+
+  check("the dashboard script fetches the tokened snapshot route",
+    /\/api\/cam\/latest/.test(page.body));
+  check("the dashboard script never puts the token in a URL",
+    !/access_token=/.test(page.body) && !/cam\/latest\.jpg/.test(page.body));
 
   if (/Connected to mqtt:\/\//.test(serverLog)) {
     console.log("ERROR: the process connected to an MQTT broker.");
