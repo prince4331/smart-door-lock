@@ -1,6 +1,7 @@
 // Local override template for non-secret firmware configuration.
 // Copy to `app_config_local.h` and adjust pins/timing for your hardware.
 // This file is an EXAMPLE; values here are placeholders, not live settings.
+// Keypad pins are no longer used.
 
 #pragma once
 
@@ -11,5 +12,3 @@
 #define BUZZER_PIN              15
 #define PIR_PIN                 14
 #define REED_PIN                27
-#define KEYPAD_ROWS 4
-#define KEYPAD_COLS 4

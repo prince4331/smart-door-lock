@@ -1,181 +1,118 @@
 # System Architecture — Smart Door Lock
 
-Audit date: 2026-09-16
-Baseline commit: `b0893d7` (branch `audit/full-codebase-baseline-20260916`)
+Audit date: 2026-09-17
+Branch: `feature/software-access-provisioning-alerts`
 
-Trust-boundary and flow descriptions were updated 2026-09-17 to match the
-Phase 0 containment work on branch `fix/phase-0-security-containment`, and
-updated again the same day for the corrective review pass: persisted camera
-media is no longer a static asset, and the environment file is resolved,
-loaded once, and validated before any service is created.
+This document records the requested feature architecture. Implementation and verification are separate: no firmware build, browser run, hardware test, or backend test result is claimed by this documentation update.
 
-This document describes what is **implemented**, not what is documented. For
-documented-vs-implemented gaps see `FEATURE_COMPLETENESS_MATRIX.md`.
+## 1. Component map
 
-## 1. Implemented component map
+```text
+                         authenticated browser dashboard
+                         DASH_TOKEN administrator session
+                                      |
+                                      | REST + authenticated SSE
+                                      v
+                         Node/Express backend
+                         ├─ state, events, commands
+                         ├─ Telegram settings (AES-256-GCM)
+                         ├─ private camera storage
+                         └─ MQTT client
+                                      |
+                         ┌────────────┴────────────┐
+                         |                         |
+                  smartlock/command        smartlock/cam/command
+                         |                         |
+                         v                         v
+                 ESP32 lock controller        ESP32-CAM
+                 ├─ PIR/reed/fire           ├─ one-shot JPEG
+                 ├─ servo/buzzer/LED        ├─ meta/chunk publish
+                 ├─ NVS STA config          └─ capture acknowledgement
+                 └─ command ACK
+                         |
+                         v
+                  physical lock and sensors
 
-```
-                     ┌──────────────────────────────────────────────┐
-                     │  Browser dashboard                            │
-                     │  server/public/index.html (static SPA)        │
-                     └───────┬───────────────────────┬──────────────┘
-                             │ HTTP (REST)             │ SSE over fetch()
-                             │ Authorization: Bearer   │ Authorization: Bearer
-                             ▼                         ▼
-                     ┌──────────────────────────────────────────────┐
-                     │  Node/Express backend                         │
-                     │  server/src/index.js                          │
-                     │  ├─ REST: state, events, pin, command, cam     │
-                     │  ├─ MQTT client (publisher + subscriber)       │
-                     │  ├─ lowdb JSON store (data.db / data.json)     │
-                     │  ├─ SSE broadcaster                            │
-                     │  └─ Telegram alert sender                      │
-                     └───────┬───────────────────────┬──────────────┘
-                             │                        │
-              MQTT (TLS 8883) │                        │ HTTPS fetch
-                             ▼                        ▼
-   ┌──────────────────────────────┐        ┌────────────────────────────┐
-   │  ESP32 lock controller        │        │  ESP32-CAM companion        │
-   │  firmware/src/main.c          │        │  firmware/esp32cam/         │
-   │  ├─ Wi-Fi STA                 │        │  ├─ Wi-Fi STA                │
-   │  ├─ MQTT pub/sub              │        │  ├─ MQTT TLS + chunks        │
-   │  ├─ Keypad (4x4)              │        │  ├─ Telegram photo send      │
-   │  ├─ PIR / reed / fire sensors │        │  └─ Snapshot on trigger      │
-   │  ├─ Servo (LED PWM)           │        └────────────────────────────┘
-   │  ├─ Buzzer / LED              │
-   │  ├─ NVS persistence           │
-   │  └─ HTTPS OTA                 │
-   └──────────────────────────────┘
-                             │
-                             ▼
-                     Physical lock (servo-actuated)
+Camera chunks -> backend reassembly -> private latest.jpg
+                                      -> authenticated /api/cam/latest
+Backend -> encrypted Telegram settings -> Telegram Bot API
 ```
 
-## 2. Data and command flow
+## 2. Access and provisioning
 
-### 2.1 Unlock command flow (verified by reading and by runtime probe)
+### Dashboard access
 
-1. Dashboard collects a shared access token from the user, stored in
-   `sessionStorage` (`public/index.html:571`, `:586`).
-2. `POST /api/command` with an `Authorization: Bearer <token>` header
-   (the legacy `X-Access-Token` header is still accepted).
-3. The `/api/*` router middleware runs `authenticateAccessToken`, which
-   compares the token to `DASH_TOKEN` using SHA-256 plus
-   `crypto.timingSafeEqual`, so an unknown credential cannot be
-   distinguished from a missing one.
-4. On success the server builds
-   `"<COMMAND>|<nonce>|<timestamp>"` where nonce is
-   `Date.now()*1000 + random*1000` and timestamp is Unix seconds
-   (`server/src/index.js:549`-`550`), then publishes to `smartlock/command`
-   with QoS 1.
-5. Firmware receives the message (`firmware/src/main.c:806`) and calls
-   `handle_command()` (`:555`), which first calls `validate_command()`
-   (`:516`).
-6. `validate_command()` splits on `|`, requires command/nonce/timestamp, and
-   rejects if `|now - ts| > CMD_TIMESTAMP_WINDOW_SEC` (300 s, defined in
-   `app_config.h`). **It does not record the nonce**, so the same command can
-   be replayed within the 300-second window (`firmware/src/main.c:516`-`553`).
-7. Firmware publishes an ACK to `smartlock/command_ack`
-   (`firmware/src/main.c:474`-`487`), which the server stores and forwards to
-   the dashboard over SSE.
-8. Dashboard confirms the state change by re-reading `/api/state` and by
-   receiving the ACK over SSE.
+- The keypad and PIN path are removed. There is no default PIN, PIN update endpoint, or local PIN unlock.
+- The dashboard authenticates with one shared `DASH_TOKEN`; its holder is the administrator. There are no user accounts, roles, or WebAuthn/passkeys yet.
+- Unlock requires a deliberate hold-to-unlock interaction and reports Sent, Acknowledged, Failed, or Timed-out states.
+- The backend publishes lock commands to `smartlock/command`; the lock publishes results to `smartlock/command_ack`.
+- When the backend or MQTT path is offline, remote electronic unlock is unavailable. The documented mechanical/inside emergency-access assumption remains the offline fallback.
 
-### 2.2 Telemetry / state flow
+### AP/STA provisioning
 
-- Firmware publishes `smartlock/state` (lock/alarm/door/uptime/rssi/heap) and
-  `smartlock/metric` periodically (`firmware/src/main.c:447`, `:509`).
-- Server persists each into `db.data.events` capped at 500 entries
-  (`server/src/index.js:242`, `:271`) and broadcasts over SSE.
-- Dashboard renders device metrics and an event/history table.
+Both firmwares store normal STA credentials locally and use the same provisioning contract:
 
-### 2.3 Camera flow
+| Firmware | Setup AP | Gateway | Access |
+| --- | --- | --- | --- |
+| Lock ESP32 | `SmartLock-Setup-<device suffix>` | `192.168.4.1` | Unique per-device **Setup code** |
+| ESP32-CAM | `SmartLock-CAM-Setup-<device suffix>` | `192.168.4.1` | Unique per-device **Setup code** |
 
-- ESP32-CAM publishes JPEG frames in chunks to `smartlock/cam/chunk` with a
-  metadata message to `smartlock/cam/meta` (`firmware/esp32cam/src/main.cpp`).
-- Server reassembles and persists the latest frame to
-  `server/data/cam/latest.jpg` (`CAM_STORAGE_DIR`, default `./data/cam`) —
-  **outside** the public static root, untracked — and exposes
-  `/api/cam/status`, `/api/cam/stream` (proxy to camera), `/api/cam/capture`,
-  and `GET /api/cam/latest`.
-- The dashboard never names the snapshot file. It fetches
-  `/api/cam/latest` with `Authorization: Bearer`, turns the response into a
-  blob object URL, revokes the previous URL, and points the `<img>` at it;
-  a 401 returns the user to the login state and a 404 shows the placeholder.
-- Phase 0 corrective pass: this file used to live at
-  `server/public/cam/latest.jpg` and was served anonymously by
-  `express.static`. The legacy path now returns a hard 404 — anonymous *and*
-  authenticated — and the snapshot is reachable only through authenticated
-  `GET /api/cam/latest`. The route additionally resolves the file with
-  `fs.realpathSync` and rejects anything that does not resolve to
-  `<camDir>/latest.jpg`, so traversal and symlink substitution both fail
-  closed.
-- Lock firmware can trigger a capture via a UART byte to the camera
-  (`CAM_UART_TRIGGER_BYTE` in `app_config.h`).
+The setup code is stored in NVS/Preferences and should be printed as a QR/enclosure label. It is not a universal password and is not derived only from a public MAC address.
 
-### 2.4 Alert flow
+The device enters provisioning when credentials are absent, STA fails for 60 seconds, or an authenticated online `START_PROVISIONING` command is received. The nearby-phone portal scans/selects Wi-Fi, tests new credentials before replacing working credentials, saves successful credentials, has no lock controls, and stops after 10 minutes of inactivity. A password entered on the portal is not sent through the MQTT command channel.
 
-- Firmware publishes `smartlock/alert` on tamper, wrong PIN, PIR dwell, or
-  door-held-open (`firmware/src/main.c:460`-`472`).
-- Server normalizes the payload (`normalizeAlertPayload`, `:153`), stores it,
-  broadcasts it, and optionally sends a Telegram photo (`handleAlertSideEffects`).
+## 3. Presence, safety, and camera flow
 
-## 3. Trust boundaries
+### Persistent motion detection
 
-| # | Boundary | Mechanism (as implemented) | Verdict |
-|---|----------|---------------------------|---------|
-| TB1 | Internet → Backend | Static shared `DASH_TOKEN`; constant-time compare; startup resolves the env file, loads it once, then validates and exits before the listener, MQTT, camera, Telegram or database is touched if the token is missing, empty or under 16 characters | Single shared secret, no users |
-| TB3a | Internet → persisted camera media | Snapshot written outside the public static root; served only by authenticated `GET /api/cam/latest`; the removed public path returns a hard 404 | Closed by the corrective review (was SEC-09) |
-| TB2 | Backend → Device | MQTT over TLS 8883; command carries nonce+timestamp | Replay window 300 s, nonce not tracked |
-| TB3 | Browser → Backend | `Authorization: Bearer` on every `/api/*` route except `/api/health` | Closed by Phase 0 (was SEC-04) |
-| TB4 | Camera → Backend | `CAM_UPLOAD_TOKEN` as Bearer or `X-Cam-Token` on `/api/cam/upload`; mandatory | Closed by Phase 0 (was optional and fail-open) |
-| TB5 | Device → Broker | MQTT username/password from `app_config.h` | Shared across all devices (see SEC-02) |
-| TB6 | Backend → Telegram | Bot token in firmware + server env | Token committed publicly (SEC-01) |
-| TB7 | Browser ↔ SSE | `/api/stream` requires `Authorization: Bearer`; the browser client uses `fetch()`, not `EventSource` | Closed by Phase 0 (was SEC-04) |
+- The feature is labeled **Persistent motion detection** and is PIR-based, not guaranteed human-presence detection.
+- The dashboard selects a 30-second or 60-second threshold.
+- A first validated PIR activation starts a presence session. Continued HIGH output or repeated motion inside a 15-second absence grace keeps the session active.
+- At the selected threshold, the lock publishes one `PRESENCE_CONFIRMED` event containing an event ID, threshold, start time, and confirmation time, then requests one camera capture.
+- A session produces at most one automatic capture. A global five-minute cooldown prevents another automatic capture.
+- A stuck PIR produces one tamper/fault event, not repeated photos.
+- Forced-entry capture remains immediate. Fire detection preserves the local auto-unlock safety behavior.
 
-## 4. External services and dependencies
+### MQTT camera command flow
 
-| Service | Used by | Purpose | Credential location |
-|---------|---------|---------|---------------------|
-| HiveMQ Cloud MQTT broker | Lock firmware, camera firmware, server | Command/telemetry transport | `app_config.h` + `esp32cam/src/main.cpp` (committed) + `server/.env` (untracked) |
-| Telegram Bot API | Camera firmware, server | Alert photos | `esp32cam/src/main.cpp` (committed) + `server/.env` |
-| Camera HTTP snapshot/stream | Server | `/api/cam/capture`, `/api/cam/stream` | `CAM_SNAPSHOT_URL` / `CAM_STREAM_URL` env |
-| Render | Backend | PaaS deploy | `server/render.yaml` |
-| Netlify | Dashboard static | Static deploy | `server/netlify.toml` |
-| SNTP (`pool.ntp.org`, `time.google.com`) | Lock firmware | Command timestamp validation | none |
+```text
+backend publishes CAPTURE { event_id, timestamp }
+  -> smartlock/cam/command
+ESP32-CAM validates the JSON, event ID, and cooldown
+  -> captures exactly once
+  -> publishes acknowledgement
+  -> publishes smartlock/cam/meta
+  -> publishes ordered smartlock/cam/chunk messages
+backend reassembles and persists latest.jpg outside the public web root
+  -> dashboard fetches authenticated /api/cam/latest
+```
 
-## 5. Hardware / software integration points
+Malformed commands are rejected, duplicate event IDs are ignored, and the camera does not capture continuously. Manual authenticated dashboard capture uses the same backend-owned command path. The current flow has no UART trigger, `CAM_CAPTURE_URL`, camera HTTP upload/stream dependency, or direct camera Telegram transmission.
 
-| Interface | Firmware | Notes |
-|-----------|----------|-------|
-| Servo PWM | `servo_control.c` (LEDC) | Pin/timing from `app_config.h` |
-| Keypad 4x4 | `main.c` sensor task | Debounce + lockout after `WRONG_ATTEMPTS_MAX` |
-| PIR motion | GPIO input | `PIR_DEBOUNCE_THRESHOLD` |
-| Reed switch | GPIO input | Door open/closed state |
-| Fire sensor | GPIO input | Alarm path |
-| Buzzer / LED | GPIO output | Alarm + status indication |
-| Camera UART | UART trigger byte | Cross-MCU capture trigger |
+## 4. Alerts and Telegram delivery
 
-Hardware pins are defined in `app_config.h` and `servo_control.h`. Per the
-audit ground rules, **no pin assignment was modified**.
+The lock publishes state and alert messages over MQTT. The backend normalizes and persists alerts, broadcasts authenticated dashboard events, and owns Telegram delivery.
 
-## 6. Repository and history topology (as found)
-The workspace is one Git repository at the project root with two remotes:
+Telegram settings are available only through the authenticated dashboard settings endpoints:
 
-- `origin` → `github.com/prince4331/iotlabesp`, default branch `master`.
-  Local `master` (`61785c7` → later `b0893d7`) is a fast-forward descendant of
-  this remote's history. **This remote already contains the full tree
-  including committed credentials** — it is the exposure source (SEC-01).
-- `smart` → `github.com/prince4331/smart-door-lock`, default branch `main`,
-  also has an identical `master` branch. Before this audit it contained only
-  the `server/` subtree (35 files). Local history and `smart` history share
-  **no common ancestor** (`git merge-base` fails).
+- `GET /api/settings/telegram`
+- `PUT /api/settings/telegram`
+- `DELETE /api/settings/telegram`
+- `POST /api/settings/telegram/test`
 
-Additionally, `server/` is itself a Git working clone (nested `.git`) of
-`smart-door-lock`. Before this audit, the root `.gitignore` did **not** ignore
-`server/.git/`, so a naive `git add .` at the root would have committed the
-nested repository's internals. This audit added `server/.git/` to the root
-`.gitignore` without modifying the nested repository.
+The backend encrypts stored bot token and chat ID with AES-256-GCM using required `SETTINGS_ENCRYPTION_KEY` material. Nonce/IV and authentication tag are stored with ciphertext; the complete token is never returned or logged. The backend sends at most one Telegram photo per event ID and records sanitized success/failure without blocking dashboard delivery.
 
-Integration strategy is documented in `AUDIT_REPORT.md` §"Integration
-strategy" and in the baseline commit message.
+## 5. Trust boundaries and current limitations
+
+| Boundary | Current mechanism | Limitation |
+| --- | --- | --- |
+| Browser to backend | `DASH_TOKEN` Bearer authentication; health is the only anonymous API route | One shared administrator, no users or roles |
+| Backend to devices | Authenticated MQTT command flow with acknowledgements | No offline queued unlock |
+| Devices to broker | Provisioned STA and deployment-specific MQTT credentials | Per-device identity/revocation remains future work |
+| Camera to backend | MQTT metadata/chunks; private backend storage | No direct camera HTTP or Telegram path |
+| Backend to Telegram | Backend-owned encrypted settings and delivery | Requires `SETTINGS_ENCRYPTION_KEY` and operator rotation |
+| Camera media to dashboard | Authenticated `/api/cam/latest`, private storage | No public static image asset |
+
+No production credentials belong in documentation, `.env.example`, firmware source, or committed configuration. Rotate Wi-Fi, MQTT, Telegram, `DASH_TOKEN`, setup-code, and encryption-key material that may have appeared in repository history before deployment.
+
+WebAuthn/passkeys are intentionally deferred until after user accounts, sessions, revocation, and server-side roles are implemented.

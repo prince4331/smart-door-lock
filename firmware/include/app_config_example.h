@@ -2,8 +2,8 @@
 //
 // Copy this file to `app_config.h` and fill in your own values.
 // NEVER commit the real `app_config.h` with live credentials.
-// The committed `app_config.h` currently contains real values and must be
-// rotated (see docs/audit/AUDIT_REPORT.md, SEC-01).
+// Provision Wi-Fi through the setup AP; do not hardcode production Wi-Fi
+// credentials here.
 
 #pragma once
 
@@ -23,8 +23,10 @@
 
 #define NVS_NAMESPACE          "smartlock"
 #define NVS_KEY_LOCK_STATE     "lock_state"
-#define NVS_KEY_PASSWORD       "password"
 #define NVS_KEY_BOOT_COUNT     "boot_count"
+#define NVS_KEY_STA_SSID       "sta_ssid"
+#define NVS_KEY_STA_PASS       "sta_pass"
+#define NVS_KEY_SETUP_CODE     "setup_code"
 
 #define CMD_TIMESTAMP_WINDOW_SEC  300   // Accept commands within 5 min window
 
@@ -35,20 +37,19 @@ extern char g_device_id[32];
 #define MQTT_TOPIC_CMD      "smartlock/command"
 #define MQTT_TOPIC_METRIC   "smartlock/metric"
 #define MQTT_TOPIC_ACK      "smartlock/command_ack"
+#define MQTT_TOPIC_CAM_CMD  "smartlock/cam/command"
 
-#define DEFAULT_LOCK_PASSWORD "CHANGE_ME"   // Default PIN; rotate on first boot
 #define AUTO_LOCK_MS          (10 * 1000)
 #define SENSOR_SCAN_MS        500
 #define MQTT_PUBLISH_MS       2000
 #define ALARM_DURATION_MS     30000
-#define WRONG_ATTEMPTS_MAX    3
-#define KEYPAD_LOCKOUT_MS    (30 * 1000)
-#define DOOR_HELD_OPEN_MS    (20 * 1000)
-#define PIR_DWELL_MS         (20 * 1000)
-#define TAMPER_PIR_MS        (120 * 1000)
-#define TAMPER_REED_MS       (120 * 1000)
-
-#define CAM_COOLDOWN_MS      (30 * 1000)
+#define DOOR_HELD_OPEN_MS     (20 * 1000)
+#define PIR_DWELL_MS          (20 * 1000)
+#define TAMPER_PIR_MS         (120 * 1000)
+#define TAMPER_REED_MS        (120 * 1000)
+#define PRESENCE_THRESHOLD_MS (30 * 1000)
+#define PRESENCE_GRACE_MS     (15 * 1000)
+#define CAPTURE_COOLDOWN_MS   (5 * 60 * 1000)
 
 #define SCHEDULE_ENABLED     1
 #define NIGHT_START_HH       23
@@ -58,12 +59,7 @@ extern char g_device_id[32];
 
 #define OTA_URL             ""
 
-#define CAM_CAPTURE_URL     ""
-#define CAM_CAPTURE_TIMEOUT_MS 5000
-
-#define CAM_UART_ENABLE     1
-#define CAM_UART_BAUD       115200
-#define CAM_UART_TRIGGER_BYTE '1'
-
-#define PIR_DEBOUNCE_THRESHOLD  5
-#define REED_DEBOUNCE_THRESHOLD 3
+#define WIFI_PROV_SSID_PREFIX "SmartLock-Setup-"
+#define WIFI_PROV_PASS_MIN   8
+#define WIFI_PROV_TIMEOUT_MS (10 * 60 * 1000)
+#define WIFI_STA_FAIL_DELAY_MS 60000

@@ -1,126 +1,74 @@
 # Smart Lock Backend Server
 
-Self-hosted API + MQTT ingest with lowdb persistence and SSE dashboard.
+Self-hosted Node/Express backend with MQTT ingest, private camera storage, an authenticated dashboard, and backend-owned Telegram delivery.
 
-## Requirements
-- Node.js 18+ (developed on 24)
-- MQTT broker reachable by server and ESP32 (e.g., Mosquitto)
+## Authentication model
+
+`DASH_TOKEN` is the single shared administrator credential. Its holder can administer the dashboard, including Telegram settings and capture requests. There are no user accounts, sessions, roles, or viewer permissions in the current model. WebAuthn/passkeys are a future upgrade after user accounts and server-side roles exist.
+
+Every `/api/*` route except `GET /api/health` requires `DASH_TOKEN`. The canonical header is `Authorization: Bearer <token>`; the legacy `X-Access-Token` alias is retained for existing clients. Missing or incorrect credentials return 401.
 
 ## Setup
+
 ```bash
 cd server
-cp .env.example .env   # then fill in the required secrets
+cp .env.example .env
 npm install
 npm start
 ```
 
-**Configuration is loaded once, then validated.** The local `.env` is read by
-`dotenv` exactly once at startup — values already present in the process
-environment win, so the file only fills gaps — and only then is the resulting
-effective configuration checked. This order is what makes the workflow above
-work: the tokens come from the copied file, not from the parent shell. If
-`DASH_TOKEN` or `CAM_UPLOAD_TOKEN` is missing, empty, whitespace-only, or
-shorter than 16 characters, startup is refused with a non-zero exit code and
-no listener, MQTT client, camera, or Telegram connection is created. Generate
-tokens with:
+Set at least:
 
-```bash
-node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-```
+- `DASH_TOKEN`: a unique administrator token.
+- `SETTINGS_ENCRYPTION_KEY`: at least 32 random bytes, kept out of source and lowdb.
+- `MQTT_BROKER`, `MQTT_USERNAME`, and `MQTT_PASSWORD`: local deployment values.
 
-An alternate environment file may be selected with `DOTENV_CONFIG_PATH`
-(absolute or relative to the server directory).
-
-Defaults:
-- API: http://localhost:8080
-- MQTT broker: mqtt://localhost:1883
-- Database: ./data.db (lowdb JSON store)
-- Camera snapshots: ./data/cam/latest.jpg (outside the public web root;
-  configurable with `CAM_STORAGE_DIR`)
-
-## Authentication
-
-Every route under `/api/` requires a credential. The only exception is
-`GET /api/health`, which is reachable anonymously so it can serve as a liveness
-probe.
-
-| Route | Credential | Header |
-| --- | --- | --- |
-| All `/api/*` except health and cam/upload | `DASH_TOKEN` | `Authorization: Bearer <token>` (`X-Access-Token` accepted as a legacy alias) |
-| `POST /api/cam/upload` | `CAM_UPLOAD_TOKEN` | `Authorization: Bearer <token>` or `x-cam-token: <token>` |
-| `GET /api/cam/latest` | `DASH_TOKEN` | `Authorization: Bearer <token>` |
-
-Notes:
-- An absent or incorrect credential returns **401**, never 403. The dashboard
-  treats a 401 as "session invalid" and returns the user to the login state.
-- `DASH_TOKEN` cannot upload camera frames, and `CAM_UPLOAD_TOKEN` cannot read
-  `/api/state` or `/api/cam/latest`. The two roles are deliberately separate.
-- Tokens are compared in constant time.
-- Camera snapshots are **not** static assets. They are stored outside the
-  public web root and served only by the authenticated `GET /api/cam/latest`
-  route with `Cache-Control: no-store, private`; the legacy `/cam/latest.jpg`
-  path returns 404.
+The backend validates required secrets before starting its listener and external connections. Telegram bot token and chat ID are configured through the authenticated dashboard settings endpoints and are encrypted at rest with AES-256-GCM. Do not put production credentials in `.env.example`, source, documentation, or firmware. Rotate any credentials previously exposed in repository history.
 
 ## API
-- `GET /api/health` - service and MQTT status (public; the only anonymous API)
-- `GET /api/state` - latest device state
-- `GET /api/events?limit=50` - recent events
-- `POST /api/command` - JSON `{ "command": "LOCK|UNLOCK|SILENCE" }`
-- `POST /api/pin` - JSON `{ "pin": "1069" }`
-- `GET /api/cam/status` - last camera snapshot metadata
-- `GET /api/cam/latest` - the persisted snapshot itself (`image/jpeg`, private)
-- `GET /api/stream` - SSE feed for live updates
-- Static dashboard at `/` (served from public/)
 
-## Camera
-- `POST /api/cam/upload` with `image/jpeg` body, authenticated with
-  `CAM_UPLOAD_TOKEN`, writes to the private snapshot store
-- `POST /api/cam/capture` to pull a snapshot from ESP32-CAM
-- `GET /api/cam/stream` proxies the MJPEG stream
-- `GET /api/cam/latest` serves the persisted snapshot; 404 when none exists.
-  The dashboard fetches it with the dashboard token and renders it via a
-  short-lived object URL, so the token never appears in the URL, the DOM, or
-  a log line.
+| Route | Access | Purpose |
+| --- | --- | --- |
+| `GET /api/health` | Public liveness probe | Backend and MQTT health |
+| `GET /api/state` | `DASH_TOKEN` | Latest lock and sensor state |
+| `GET /api/events?limit=50` | `DASH_TOKEN` | Recent persisted events |
+| `POST /api/command` | `DASH_TOKEN` | Authenticated lock/device command; publishes to `smartlock/command` |
+| `POST /api/cam/capture` | `DASH_TOKEN` | Manual capture request translated to the backend-owned MQTT camera command |
+| `GET /api/cam/status` | `DASH_TOKEN` | Latest camera metadata |
+| `GET /api/cam/latest` | `DASH_TOKEN` | Protected persisted JPEG; never a public static asset |
+| `GET /api/stream` | `DASH_TOKEN` | Authenticated SSE updates |
+| `GET /api/settings/telegram` | `DASH_TOKEN` | Masked Telegram configuration state |
+| `PUT /api/settings/telegram` | `DASH_TOKEN` | Validate, encrypt, and save Telegram settings |
+| `DELETE /api/settings/telegram` | `DASH_TOKEN` | Remove stored Telegram settings |
+| `POST /api/settings/telegram/test` | `DASH_TOKEN` | Send a harmless test message |
 
-## Streaming
-The dashboard does not use the browser `EventSource` API, because that API
-cannot send an `Authorization` header. It reads `/api/stream` with `fetch()`
-and parses the SSE frames itself, sending `Authorization: Bearer`. On a dropped
-connection it reconnects with bounded exponential backoff capped at 30s; on a
-401 it clears the stored token and shows the login view.
+`POST /api/pin` is not part of the current API. The camera firmware does not use an HTTP upload, snapshot, or stream URL; camera media follows the MQTT command flow described below.
 
-## Rate limiting
-`express-rate-limit` guards the API. `DISABLE_RATE_LIMIT=1` is an emergency
-escape hatch that is honoured only when `NODE_ENV` is `development` or `test`;
-in every other environment the limiter always runs and the flag is ignored
-(with a startup warning).
+## Camera flow
 
-## Topics
-- Ingest: `smartlock/state`, `smartlock/alert`, `smartlock/metric`, `smartlock/command_ack`
-- Camera ingest (MQTT chunks): `smartlock/cam/meta`, `smartlock/cam/chunk`
-- Commands (outbound): `smartlock/command`
+1. The authenticated dashboard or presence logic asks the backend for a capture.
+2. The backend publishes `CAPTURE` with an event ID and timestamp to `smartlock/cam/command`.
+3. The ESP32-CAM captures once, rejects duplicate event IDs, enforces its cooldown, and publishes `smartlock/cam/meta` plus `smartlock/cam/chunk`.
+4. The backend reassembles the JPEG into private storage and broadcasts an authenticated camera event. The dashboard refreshes through `/api/cam/latest`.
+5. Telegram delivery, when enabled, is performed once by the backend for that event ID. A Telegram failure is recorded in sanitized form and does not block dashboard delivery.
 
-## Tests
-```bash
-npm test
-```
-The suite imports the Express app directly. An inert MQTT stub is used in that
-mode, so **no broker connection is ever opened** and no real credential is read
-from disk: placeholder tokens are generated per run with `crypto.randomBytes`.
-Every runtime artifact — database, snapshot store, generated environment files
-— is written to a per-run temporary directory removed at teardown, so a test
-run cannot dirty the working tree.
+## Telegram settings
 
-The same applies to the ad-hoc scripts in `test/`, which additionally point
-`MQTT_BROKER` at an unreachable loopback port. Run the full acceptance suite
-with `node test/verify-phase0.mjs`; it ends by asserting that the working tree
-is clean, so a probe that polluted it fails the suite.
+Telegram credentials are backend-owned. The settings endpoints are rate-limited, validate token and chat-ID formats, validate proposed credentials with a mocked or controlled Telegram check before saving, and return no complete bot token. Stored ciphertext includes its nonce/IV and authentication tag. Decrypted values are never logged.
 
-## Telegram
-Set these in `.env` (do not hardcode in firmware):
-- `TG_BOT_TOKEN`
-- `TG_CHAT_ID`
+## MQTT topics
 
-## Notes
-- Broker credentials can be set via environment variables
-- `CAM_SNAPSHOT_URL` and `CAM_STREAM_URL` must use `https://` when set
+- Lock ingest: `smartlock/state`, `smartlock/alert`, `smartlock/metric`, `smartlock/command_ack`
+- Lock commands: `smartlock/command`
+- Camera command: `smartlock/cam/command`
+- Camera ingest: `smartlock/cam/meta`, `smartlock/cam/chunk`
+
+Presence-setting changes use the authenticated device command/acknowledgement path. The dashboard shows pending, acknowledged, failed, and offline states rather than treating an unacknowledged value as active.
+
+## Offline limitation
+
+Dashboard unlock, provisioning requests, presence-setting changes, and camera commands require the backend and MQTT path. They are not queued as offline electronic unlock. Local fire auto-unlock and forced-entry safety behavior remain available independently of dashboard connectivity.
+
+## Verification status
+
+This README describes the requested feature architecture. It does not claim a backend test, firmware build, browser run, or hardware test result; record actual verification output separately.
