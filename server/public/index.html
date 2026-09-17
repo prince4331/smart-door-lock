@@ -389,6 +389,25 @@
           </div>
         </div>
 
+        <div class="card" id="telegramCard">
+          <h2>Telegram Notifications</h2>
+          <div id="telegramStatus" style="margin-bottom: 10px; font-size: 12px; color: var(--muted);">Loading...</div>
+          <div style="margin-bottom: 8px;">
+            <label style="display: block; font-size: 11px; color: var(--muted); margin-bottom: 4px;">Bot Token</label>
+            <input type="password" id="tgBotToken" placeholder="Configured — leave blank to keep current token" style="width: 100%; padding: 8px 10px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.16); border-radius: 8px; color: var(--text); font-size: 12px; min-width: 0;" />
+          </div>
+          <div style="margin-bottom: 10px;">
+            <label style="display: block; font-size: 11px; color: var(--muted); margin-bottom: 4px;">Chat ID</label>
+            <input type="text" id="tgChatId" placeholder="-1001234567890 or @channel" style="width: 100%; padding: 8px 10px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.16); border-radius: 8px; color: var(--text); font-size: 12px; min-width: 0;" />
+          </div>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <button onclick="saveTelegramSettings()" class="btn-secondary" style="flex: 1; min-width: 80px;">Save</button>
+            <button onclick="testTelegramSettings()" class="btn-secondary" style="flex: 1; min-width: 80px;">Test</button>
+            <button onclick="disableTelegramSettings()" class="btn-danger" style="flex: 1; min-width: 80px;">Disable</button>
+          </div>
+          <div id="telegramMessage" style="margin-top: 8px; font-size: 12px; display: none;"></div>
+        </div>
+
         <div class="card">
           <h2>Security Mode</h2>
           <div style="margin-bottom: 10px;">
@@ -663,12 +682,145 @@
           loadHistory();
           loadInitial();
           loadCameraStatus();
+          loadTelegramSettings();
           setInterval(loadCameraStatus, 2000);
           connectSSE();
         }
       }).catch(() => {
         elements.conn.textContent = 'Server offline';
       });
+    }
+
+    async function loadTelegramSettings() {
+      const statusEl = document.getElementById('telegramStatus');
+      const tokenInput = document.getElementById('tgBotToken');
+      const chatInput = document.getElementById('tgChatId');
+      const msgEl = document.getElementById('telegramMessage');
+
+      try {
+        const res = await fetch('/api/settings/telegram', { headers: authHeaders() });
+        if (res.status === 401) { handleUnauthorized(); return; }
+        if (!res.ok) {
+          statusEl.textContent = 'Unable to load Telegram settings';
+          return;
+        }
+        const data = await res.json();
+
+        if (data.configured && data.source === 'dashboard') {
+          statusEl.textContent = `Status: Configured (dashboard) · Updated: ${data.updated_at ? new Date(data.updated_at).toLocaleString() : 'N/A'}`;
+          statusEl.style.color = 'var(--success)';
+          tokenInput.value = '';
+          tokenInput.placeholder = 'Configured — leave blank to keep current token';
+          chatInput.value = data.chat_id || '';
+        } else if (data.configured && data.source === 'environment') {
+          statusEl.textContent = 'Status: Configured (legacy environment)';
+          statusEl.style.color = 'var(--warn)';
+          tokenInput.value = '';
+          tokenInput.placeholder = 'Configured via environment — leave blank to keep';
+          chatInput.value = data.chat_id || '';
+        } else if (data.disabled) {
+          statusEl.textContent = 'Status: Disabled';
+          statusEl.style.color = 'var(--danger)';
+          tokenInput.value = '';
+          chatInput.value = '';
+        } else {
+          statusEl.textContent = 'Status: Not configured';
+          statusEl.style.color = 'var(--muted)';
+          tokenInput.value = '';
+          chatInput.value = '';
+        }
+        msgEl.style.display = 'none';
+      } catch (e) {
+        statusEl.textContent = 'Status: Load error';
+        console.warn('Telegram settings load failed', e);
+      }
+    }
+
+    async function saveTelegramSettings() {
+      const tokenInput = document.getElementById('tgBotToken');
+      const chatInput = document.getElementById('tgChatId');
+      const msgEl = document.getElementById('telegramMessage');
+      const botToken = tokenInput.value.trim();
+      const chatId = chatInput.value.trim();
+
+      const body = {};
+      if (botToken) body.bot_token = botToken;
+      if (chatId) body.chat_id = chatId;
+      if (!botToken && !chatId) {
+        showTelegramMessage('Provide at least a bot token or chat ID', 'error');
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/settings/telegram', {
+          method: 'PUT',
+          headers: Object.assign({}, authHeaders({ 'Content-Type': 'application/json' })),
+          body: JSON.stringify(body),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          showTelegramMessage(data.error || 'Save failed', 'error');
+          return;
+        }
+        tokenInput.value = '';
+        showTelegramMessage('Telegram settings saved', 'success');
+        loadTelegramSettings();
+      } catch (e) {
+        showTelegramMessage('Save failed: network error', 'error');
+      }
+    }
+
+    async function testTelegramSettings() {
+      const msgEl = document.getElementById('telegramMessage');
+      msgEl.style.display = 'block';
+      msgEl.style.color = 'var(--info)';
+      msgEl.textContent = 'Testing…';
+
+      try {
+        const res = await fetch('/api/settings/telegram/test', {
+          method: 'POST',
+          headers: authHeaders(),
+        });
+        const data = await res.json();
+        if (res.ok && data.ok) {
+          msgEl.style.color = 'var(--success)';
+          msgEl.textContent = 'Connected / Test message sent';
+        } else {
+          msgEl.style.color = 'var(--danger)';
+          msgEl.textContent = data.error || 'Test failed';
+        }
+      } catch (e) {
+        msgEl.style.color = 'var(--danger)';
+        msgEl.textContent = 'Test failed: network error';
+      }
+    }
+
+    async function disableTelegramSettings() {
+      if (!confirm('Disable Telegram notifications? The backend will stop sending Telegram messages until settings are saved again.')) {
+        return;
+      }
+      try {
+        const res = await fetch('/api/settings/telegram', {
+          method: 'DELETE',
+          headers: authHeaders(),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          showTelegramMessage(data.error || 'Disable failed', 'error');
+          return;
+        }
+        showTelegramMessage('Telegram notifications disabled', 'success');
+        loadTelegramSettings();
+      } catch (e) {
+        showTelegramMessage('Disable failed: network error', 'error');
+      }
+    }
+
+    function showTelegramMessage(msg, type) {
+      const msgEl = document.getElementById('telegramMessage');
+      msgEl.style.display = 'block';
+      msgEl.style.color = type === 'error' ? 'var(--danger)' : 'var(--success)';
+      msgEl.textContent = msg;
     }
 
     // Initialize

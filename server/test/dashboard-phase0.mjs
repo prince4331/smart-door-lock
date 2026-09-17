@@ -18,6 +18,7 @@ import path from "node:path";
 const ROOT = path.resolve(import.meta.dirname, "..");
 const DASH = crypto.randomBytes(32).toString("hex");
 const CAM = crypto.randomBytes(32).toString("hex");
+const ENC_KEY = crypto.randomBytes(32).toString("hex");
 const SCRATCH = fs.mkdtempSync(path.join(os.tmpdir(), "smartlock-dash-"));
 const PROBE_DB = path.join(SCRATCH, "data.probe.db");
 const CAM_DIR = path.join(SCRATCH, "cam");
@@ -67,6 +68,7 @@ const env = {
   SYSTEMROOT: process.env.SYSTEMROOT || "",
   DASH_TOKEN: DASH,
   CAM_UPLOAD_TOKEN: CAM,
+  SETTINGS_ENCRYPTION_KEY: ENC_KEY,
   DB_PATH: PROBE_DB,
   CAM_STORAGE_DIR: CAM_DIR,
   MQTT_BROKER: "mqtt://127.0.0.1:18830",   // unreachable: no broker is ever contacted

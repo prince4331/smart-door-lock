@@ -22,6 +22,7 @@ import http from "node:http";
 
 const DASH_TOKEN = crypto.randomBytes(32).toString("hex");
 const CAM_UPLOAD_TOKEN = crypto.randomBytes(32).toString("hex");
+const ENCRYPTION_KEY = crypto.randomBytes(32).toString("hex");
 
 // Per-run scratch directory: DB, camera storage and generated env files all
 // live under here and are removed wholesale on teardown.
@@ -47,6 +48,7 @@ const env = {
   MQTT_PASSWORD: "",
   TG_BOT_TOKEN: "",
   TG_CHAT_ID: "",
+  SETTINGS_ENCRYPTION_KEY: crypto.randomBytes(32).toString("hex"),
   DISABLE_RATE_LIMIT: "1",
   PORT: "0",
 };
@@ -115,28 +117,28 @@ after(() => {
 
 describe("startup configuration validation", () => {
   test("validateConfig accepts valid, non-empty tokens", () => {
-    assert.deepEqual(validateConfig({ dashToken: DASH_TOKEN, camUploadToken: CAM_UPLOAD_TOKEN }), []);
+    assert.deepEqual(validateConfig({ dashToken: DASH_TOKEN, camUploadToken: CAM_UPLOAD_TOKEN, settingsEncryptionKey: ENCRYPTION_KEY }), []);
   });
 
   test("validateConfig rejects a missing DASH_TOKEN", () => {
-    const errors = validateConfig({ dashToken: "", camUploadToken: CAM_UPLOAD_TOKEN });
+    const errors = validateConfig({ dashToken: "", camUploadToken: CAM_UPLOAD_TOKEN, settingsEncryptionKey: ENCRYPTION_KEY });
     assert.ok(errors.some((e) => e.includes("DASH_TOKEN")), "missing DASH_TOKEN must be reported");
   });
 
   test("validateConfig rejects a whitespace-only DASH_TOKEN", () => {
-    const errors = validateConfig({ dashToken: "   ", camUploadToken: CAM_UPLOAD_TOKEN });
+    const errors = validateConfig({ dashToken: "   ", camUploadToken: CAM_UPLOAD_TOKEN, settingsEncryptionKey: ENCRYPTION_KEY });
     assert.notDeepEqual(errors, []);
     assert.ok(errors.some((e) => e.includes("DASH_TOKEN")));
   });
 
   test("validateConfig rejects a missing CAM_UPLOAD_TOKEN", () => {
-    const errors = validateConfig({ dashToken: DASH_TOKEN, camUploadToken: "" });
+    const errors = validateConfig({ dashToken: DASH_TOKEN, camUploadToken: "", settingsEncryptionKey: ENCRYPTION_KEY });
     assert.ok(errors.some((e) => e.includes("CAM_UPLOAD_TOKEN")), "missing CAM_UPLOAD_TOKEN must be reported");
   });
 
   test("validateConfig rejects a plain-http camera snapshot URL", () => {
     const errors = validateConfig({
-      dashToken: DASH_TOKEN, camUploadToken: CAM_UPLOAD_TOKEN,
+      dashToken: DASH_TOKEN, camUploadToken: CAM_UPLOAD_TOKEN, settingsEncryptionKey: ENCRYPTION_KEY,
       camSnapshotUrl: "http://camera.local/snap",
     });
     assert.ok(errors.some((e) => e.includes("CAM_SNAPSHOT_URL")));
@@ -144,7 +146,7 @@ describe("startup configuration validation", () => {
 
   test("validateConfig rejects a plain-http camera stream URL", () => {
     const errors = validateConfig({
-      dashToken: DASH_TOKEN, camUploadToken: CAM_UPLOAD_TOKEN,
+      dashToken: DASH_TOKEN, camUploadToken: CAM_UPLOAD_TOKEN, settingsEncryptionKey: ENCRYPTION_KEY,
       camStreamUrl: "http://camera.local/stream",
     });
     assert.ok(errors.some((e) => e.includes("CAM_STREAM_URL")));
@@ -152,7 +154,7 @@ describe("startup configuration validation", () => {
 
   test("validateConfig accepts an unset camera URL", () => {
     assert.deepEqual(validateConfig({
-      dashToken: DASH_TOKEN, camUploadToken: CAM_UPLOAD_TOKEN,
+      dashToken: DASH_TOKEN, camUploadToken: CAM_UPLOAD_TOKEN, settingsEncryptionKey: ENCRYPTION_KEY,
       camSnapshotUrl: undefined, camStreamUrl: undefined,
     }), []);
   });
@@ -464,22 +466,22 @@ describe("startup configuration validation (corrective review)", () => {
   test("a file can supply the tokens the process environment omits", () => {
     // The documented workflow: `cp .env.example .env && npm start`. The tokens
     // arrive from the file, so validation must run after dotenv loads.
-    assert.deepEqual(validateConfig({ dashToken: DASH_TOKEN, camUploadToken: CAM_UPLOAD_TOKEN }), []);
+    assert.deepEqual(validateConfig({ dashToken: DASH_TOKEN, camUploadToken: CAM_UPLOAD_TOKEN, settingsEncryptionKey: ENCRYPTION_KEY }), []);
   });
 
   test("validateConfig rejects a short DASH_TOKEN", () => {
-    const errors = validateConfig({ dashToken: "short", camUploadToken: CAM_UPLOAD_TOKEN });
+    const errors = validateConfig({ dashToken: "short", camUploadToken: CAM_UPLOAD_TOKEN, settingsEncryptionKey: ENCRYPTION_KEY });
     assert.ok(errors.some((e) => e.includes("DASH_TOKEN")),
       "a token below the minimum length must be rejected");
   });
 
   test("validateConfig rejects an insecure camera snapshot URL", () => {
-    const errors = validateConfig({ dashToken: DASH_TOKEN, camUploadToken: CAM_UPLOAD_TOKEN, camSnapshotUrl: "http://192.168.1.10/snap.jpg" });
+    const errors = validateConfig({ dashToken: DASH_TOKEN, camUploadToken: CAM_UPLOAD_TOKEN, settingsEncryptionKey: ENCRYPTION_KEY, camSnapshotUrl: "http://192.168.1.10/snap.jpg" });
     assert.ok(errors.some((e) => /snapshot/i.test(e)), "a plain HTTP snapshot URL must be rejected");
   });
 
   test("validateConfig accepts an https camera snapshot URL", () => {
-    const errors = validateConfig({ dashToken: DASH_TOKEN, camUploadToken: CAM_UPLOAD_TOKEN, camSnapshotUrl: "https://camera.local/snap.jpg" });
+    const errors = validateConfig({ dashToken: DASH_TOKEN, camUploadToken: CAM_UPLOAD_TOKEN, settingsEncryptionKey: ENCRYPTION_KEY, camSnapshotUrl: "https://camera.local/snap.jpg" });
     assert.deepEqual(errors, []);
   });
 
@@ -572,7 +574,7 @@ describe("startup gate refuses to listen (spawned entrypoint)", () => {
   test("tokens from the env file alone let it start and listen", async () => {
     const envFile = path.join(SCRATCH, ".env.startup-ok");
     fs.writeFileSync(envFile,
-      "DASH_TOKEN=" + DASH_TOKEN + "\nCAM_UPLOAD_TOKEN=" + CAM_UPLOAD_TOKEN + "\nPORT=0\nMQTT_BROKER=mqtt://100.64.0.1:18830\n");
+      "DASH_TOKEN=" + DASH_TOKEN + "\nCAM_UPLOAD_TOKEN=" + CAM_UPLOAD_TOKEN + "\nSETTINGS_ENCRYPTION_KEY=" + ENCRYPTION_KEY + "\nPORT=0\nMQTT_BROKER=mqtt://100.64.0.1:18830\n");
     const { out, timedOut } = await spawnEntrypoint({
       PATH: process.env.PATH, SYSTEMROOT: process.env.SYSTEMROOT || "",
       NODE_ENV: "development",
@@ -595,7 +597,7 @@ describe("startup gate refuses to listen (spawned entrypoint)", () => {
       PATH: process.env.PATH, SYSTEMROOT: process.env.SYSTEMROOT || "",
       NODE_ENV: "development",
       DOTENV_CONFIG_PATH: path.join(SCRATCH, ".env.startup-empty"),
-      DASH_TOKEN, CAM_UPLOAD_TOKEN,
+      DASH_TOKEN, CAM_UPLOAD_TOKEN, SETTINGS_ENCRYPTION_KEY: ENCRYPTION_KEY,
       DB_PATH: path.join(SCRATCH, "gate.db"),
       CAM_STORAGE_DIR: path.join(SCRATCH, "gate-cam"),
       MQTT_BROKER: "mqtt://100.64.0.1:18830",

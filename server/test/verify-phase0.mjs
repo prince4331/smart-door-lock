@@ -149,6 +149,7 @@ check("npm test passes with no failures", tests.code === 0 && fail === 0,
 console.log("\n== 4. Fail-closed startup ==");
 const DASH = crypto.randomBytes(32).toString("hex");
 const CAM = crypto.randomBytes(32).toString("hex");
+const ENC_KEY = crypto.randomBytes(32).toString("hex");
 const PORT = String(await freePort());
 const VERIFY_DB = path.join(SCRATCH, "data.verify.db");
 const CAM_DIR = path.join(SCRATCH, "cam");
@@ -157,7 +158,9 @@ const CAM_DIR = path.join(SCRATCH, "cam");
 const baseEnv = {
   PATH: process.env.PATH,
   SYSTEMROOT: process.env.SYSTEMROOT || "",
+  DASH_TOKEN: DASH,
   CAM_UPLOAD_TOKEN: CAM,
+  SETTINGS_ENCRYPTION_KEY: ENC_KEY,
   DB_PATH: VERIFY_DB,
   CAM_STORAGE_DIR: CAM_DIR,
   MQTT_BROKER: "mqtt://127.0.0.1:18830",   // unreachable: never contacted
@@ -169,20 +172,20 @@ const baseEnv = {
 // tokens are supplied by the file, not by the parent shell.
 const ENV_FILE = path.join(SCRATCH, ".env.verify");
 fs.writeFileSync(ENV_FILE,
-  "DASH_TOKEN=" + DASH + "\nCAM_UPLOAD_TOKEN=" + CAM + "\nPORT=" + PORT + "\n");
+  "DASH_TOKEN=" + DASH + "\nCAM_UPLOAD_TOKEN=" + CAM + "\nSETTINGS_ENCRYPTION_KEY=" + ENC_KEY + "\nPORT=" + PORT + "\n");
 check("generated .env is written for the startup probe", fs.existsSync(ENV_FILE));
 
 // No DASH_TOKEN at all: the startup gate must refuse to listen. The env file
 // used here deliberately omits it, so the only way to boot would be a token
 // leaking in from somewhere else.
 const NO_TOKEN_ENV_FILE = path.join(SCRATCH, ".env.verify-no-token");
-fs.writeFileSync(NO_TOKEN_ENV_FILE, "CAM_UPLOAD_TOKEN=" + CAM + "\nPORT=" + PORT + "\n");
+fs.writeFileSync(NO_TOKEN_ENV_FILE, "CAM_UPLOAD_TOKEN=" + CAM + "\nSETTINGS_ENCRYPTION_KEY=" + ENC_KEY + "\nPORT=" + PORT + "\n");
 const badStart = await run(process.execPath, [path.join(ROOT, "src", "index.js")],
   { env: { PATH: process.env.PATH, SYSTEMROOT: process.env.SYSTEMROOT || "",
       NODE_ENV: "development", DOTENV_CONFIG_PATH: NO_TOKEN_ENV_FILE,
       DB_PATH: VERIFY_DB, CAM_STORAGE_DIR: CAM_DIR,
       MQTT_BROKER: "mqtt://127.0.0.1:18830", MQTT_USERNAME: "", MQTT_PASSWORD: "",
-      TG_BOT_TOKEN: "", TG_CHAT_ID: "", DISABLE_RATE_LIMIT: "1", PORT },
+      TG_BOT_TOKEN: "", TG_CHAT_ID: "", SETTINGS_ENCRYPTION_KEY: ENC_KEY, DISABLE_RATE_LIMIT: "1", PORT },
     timeout: 20000 });
 check("missing DASH_TOKEN exits non-zero", badStart.code !== 0, `exit ${badStart.code}`);
 check("missing DASH_TOKEN terminates without hanging", badStart.code !== -1, `exit ${badStart.code}`);
@@ -221,7 +224,7 @@ const goodEnv = { PATH: process.env.PATH, SYSTEMROOT: process.env.SYSTEMROOT || 
   NODE_ENV: "development", DOTENV_CONFIG_PATH: ENV_FILE,
   DB_PATH: VERIFY_DB, CAM_STORAGE_DIR: CAM_DIR,
   MQTT_BROKER: "mqtt://127.0.0.1:18830", MQTT_USERNAME: "", MQTT_PASSWORD: "",
-  TG_BOT_TOKEN: "", TG_CHAT_ID: "", DISABLE_RATE_LIMIT: "1", PORT };
+  TG_BOT_TOKEN: "", TG_CHAT_ID: "", SETTINGS_ENCRYPTION_KEY: ENC_KEY, DISABLE_RATE_LIMIT: "1", PORT };
 const child = spawn(process.execPath, [path.join(ROOT, "src", "index.js")], { cwd: ROOT, env: goodEnv, stdio: ["ignore", "pipe", "pipe"] });
 let serverLog = "";
 child.stdout.on("data", (c) => (serverLog += c.toString()));

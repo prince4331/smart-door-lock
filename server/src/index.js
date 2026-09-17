@@ -12,6 +12,19 @@ import http from "http";
 import https from "https";
 import rateLimit from "express-rate-limit";
 import crypto from "crypto";
+import {
+  parseSettingsEncryptionKey,
+  encryptTelegramSettings,
+  decryptTelegramSettings,
+  maskBotToken,
+  validateBotToken,
+  validateChatId,
+  resolveTelegramConfig,
+  getDecryptedTelegram,
+  SETTINGS_NS,
+  TELEGRAM_KEY,
+  DISABLED_KEY,
+} from "./telegram-settings.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -61,7 +74,7 @@ if (!IS_TEST) {
   }
 }
 
-export function validateConfig({ dashToken, camUploadToken, camSnapshotUrl, camStreamUrl }) {
+export function validateConfig({ dashToken, camUploadToken, camSnapshotUrl, camStreamUrl, settingsEncryptionKey }) {
   const errors = [];
   // Tokens must not be merely non-empty: a guessable short value offers no
   // protection, so a minimum length is enforced at startup as well as by the
@@ -83,6 +96,15 @@ export function validateConfig({ dashToken, camUploadToken, camSnapshotUrl, camS
   if (camStreamUrl && !camStreamUrl.startsWith("https://")) {
     errors.push("CAM_STREAM_URL must use https:// when configured.");
   }
+  if (!settingsEncryptionKey || !settingsEncryptionKey.trim()) {
+    errors.push("SETTINGS_ENCRYPTION_KEY is missing or empty. Generate one with: node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\"");
+  } else {
+    try {
+      parseSettingsEncryptionKey(settingsEncryptionKey);
+    } catch (err) {
+      errors.push(`SETTINGS_ENCRYPTION_KEY is invalid: ${err.message}`);
+    }
+  }
   return errors;
 }
 
@@ -92,6 +114,7 @@ export function validateServerConfig() {
     camUploadToken: process.env.CAM_UPLOAD_TOKEN || process.env.CAM_TOKEN,
     camSnapshotUrl: process.env.CAM_SNAPSHOT_URL,
     camStreamUrl: process.env.CAM_STREAM_URL,
+    settingsEncryptionKey: process.env.SETTINGS_ENCRYPTION_KEY,
   });
 }
 
@@ -115,6 +138,19 @@ const CAM_STREAM_URL = process.env.CAM_STREAM_URL || "";
 const CAM_SNAPSHOT_URL = process.env.CAM_SNAPSHOT_URL || "";
 const TG_BOT_TOKEN = process.env.TG_BOT_TOKEN || "";
 const TG_CHAT_ID = process.env.TG_CHAT_ID || "";
+const SETTINGS_ENCRYPTION_KEY = process.env.SETTINGS_ENCRYPTION_KEY || "";
+
+let settingsEncryptionKeyBuffer = null;
+try {
+  if (SETTINGS_ENCRYPTION_KEY) {
+    settingsEncryptionKeyBuffer = parseSettingsEncryptionKey(SETTINGS_ENCRYPTION_KEY);
+  }
+} catch (err) {
+  if (!IS_TEST) {
+    console.error(`[CONFIG] ${err.message}`);
+    process.exit(1);
+  }
+}
 
 // True when this module runs as the entrypoint rather than imported by a test.
 // The entrypoint is the only path that connects to MQTT and binds the HTTP
@@ -151,6 +187,7 @@ const adapter = new JSONFile(DB_PATH);
 const db = new Low(adapter, { state: null, events: [] });
 await db.read();
 db.data ||= { state: null, events: [] };
+db.data.settings ||= {};
 await db.write();
 
 const ENABLE_MQTT = IS_ENTRYPOINT && !IS_TEST;
@@ -228,13 +265,26 @@ const camChunks = new Map();
 const CAM_CHUNK_TTL_MS = 120000;
 
 async function sendTelegramMessage(text) {
-  if (!TG_BOT_TOKEN || !TG_CHAT_ID) return;
-  const url = `https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage`;
+  const config = resolveTelegramConfig(
+    db.data.settings,
+    TG_BOT_TOKEN,
+    TG_CHAT_ID,
+    db.data.settings && db.data.settings[DISABLED_KEY]
+  );
+
+  if (!config) return;
+
+  const botToken = config.bot_token;
+  const chatId = config.chat_id;
+
+  if (!botToken || !chatId) return;
+
+  const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
   try {
     await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: TG_CHAT_ID, text }),
+      body: JSON.stringify({ chat_id: chatId, text }),
     });
   } catch (err) {
     console.warn("[TG] sendMessage failed:", err.message);
@@ -242,12 +292,25 @@ async function sendTelegramMessage(text) {
 }
 
 async function sendTelegramPhoto(caption) {
-  if (!TG_BOT_TOKEN || !TG_CHAT_ID) return;
+  const config = resolveTelegramConfig(
+    db.data.settings,
+    TG_BOT_TOKEN,
+    TG_CHAT_ID,
+    db.data.settings && db.data.settings[DISABLED_KEY]
+  );
+
+  if (!config) return;
+
+  const botToken = config.bot_token;
+  const chatId = config.chat_id;
+
+  if (!botToken || !chatId) return;
   if (!fs.existsSync(camLatestPath)) return;
-  const url = `https://api.telegram.org/bot${TG_BOT_TOKEN}/sendPhoto`;
+
+  const url = `https://api.telegram.org/bot${botToken}/sendPhoto`;
   try {
     const form = new FormData();
-    form.append("chat_id", TG_CHAT_ID);
+    form.append("chat_id", chatId);
     if (caption) form.append("caption", caption);
     const data = fs.readFileSync(camLatestPath);
     form.append("photo", new Blob([data], { type: "image/jpeg" }), "latest.jpg");
@@ -618,6 +681,16 @@ if (!rateLimitDisabled) {
   });
   // Apply to all API routes
   app.use("/api", limiter);
+
+  const telegramSettingsLimiter = rateLimit({
+    windowMs: 60000,
+    max: 5,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many Telegram settings requests, please try again later" },
+    skip: (req) => !req.path.startsWith("/api/settings/telegram"),
+  });
+  app.use("/api/settings/telegram", telegramSettingsLimiter);
 }
 
 // Every route below this point requires the dashboard access token except the
@@ -762,6 +835,217 @@ app.get("/api/stream", (req, res) => {
   req.on("close", () => sseClients.delete(client));
 });
 
+// Telegram settings. Authenticated above by the shared /api/ middleware.
+app.get("/api/settings/telegram", (req, res) => {
+  const isDisabled = db.data.settings && db.data.settings[DISABLED_KEY];
+  const legacyBotToken = process.env.TG_BOT_TOKEN || "";
+  const legacyChatId = process.env.TG_CHAT_ID || "";
+
+  const resolution = resolveTelegramConfig(
+    db.data.settings,
+    legacyBotToken,
+    legacyChatId,
+    isDisabled
+  );
+
+  if (!resolution) {
+    return res.json({
+      configured: false,
+      source: "none",
+      disabled: !!isDisabled,
+    });
+  }
+
+  const decrypted = resolution.source === "dashboard"
+    ? getDecryptedTelegram(db.data.settings, settingsEncryptionKeyBuffer)
+    : null;
+
+  const botToken = decrypted ? decrypted.bot_token : resolution.bot_token;
+  const chatId = decrypted ? decrypted.chat_id : resolution.chat_id;
+
+  if (!botToken || !chatId) {
+    return res.json({
+      configured: false,
+      source: resolution.source,
+      disabled: !!isDisabled,
+    });
+  }
+
+  res.json({
+    configured: true,
+    source: resolution.source,
+    bot_token_masked: maskBotToken(botToken),
+    chat_id: chatId,
+    updated_at: db.data.settings && db.data.settings[TELEGRAM_KEY]
+      ? db.data.settings[TELEGRAM_KEY].updated_at
+      : null,
+  });
+});
+
+app.put("/api/settings/telegram", async (req, res) => {
+  if (!settingsEncryptionKeyBuffer) {
+    return res.status(500).json({ error: "SETTINGS_ENCRYPTION_KEY is not configured" });
+  }
+
+  const { bot_token, chat_id } = req.body || {};
+
+  let finalBotToken = typeof bot_token === "string" ? bot_token.trim() : "";
+  let finalChatId = typeof chat_id === "string" ? chat_id.trim() : "";
+
+  const isDisabled = db.data.settings && db.data.settings[DISABLED_KEY];
+  const hasExistingDashboardConfig =
+    db.data.settings && db.data.settings[TELEGRAM_KEY] && db.data.settings[TELEGRAM_KEY].ciphertext;
+
+  if (isDisabled && !finalBotToken && !finalChatId) {
+    return res.json({
+      configured: false,
+      source: "none",
+      disabled: true,
+    });
+  }
+
+  if (!finalBotToken && hasExistingDashboardConfig) {
+    const decrypted = getDecryptedTelegram(db.data.settings, settingsEncryptionKeyBuffer);
+    if (decrypted && decrypted.bot_token) {
+      finalBotToken = decrypted.bot_token;
+    }
+  }
+
+  if (!finalBotToken && !process.env.TG_BOT_TOKEN) {
+    return res.status(400).json({ error: "bot_token is required" });
+  }
+
+  if (finalBotToken && !validateBotToken(finalBotToken)) {
+    return res.status(400).json({ error: "Invalid bot_token format" });
+  }
+
+  if (finalChatId && !validateChatId(finalChatId)) {
+    return res.status(400).json({ error: "Invalid chat_id format" });
+  }
+
+  const effectiveBotToken = finalBotToken || process.env.TG_BOT_TOKEN;
+  const effectiveChatId = finalChatId || process.env.TG_CHAT_ID;
+
+  if (!effectiveBotToken || !effectiveChatId) {
+    return res.status(400).json({ error: "bot_token and chat_id are required" });
+  }
+
+  if (!validateBotToken(effectiveBotToken) || !validateChatId(effectiveChatId)) {
+    return res.status(400).json({ error: "Invalid bot_token or chat_id format" });
+  }
+
+  const encrypted = encryptTelegramSettings(
+    { bot_token: effectiveBotToken, chat_id: effectiveChatId },
+    settingsEncryptionKeyBuffer
+  );
+
+  db.data.settings[TELEGRAM_KEY] = encrypted;
+  db.data.settings[DISABLED_KEY] = false;
+  await db.write();
+
+  res.json({
+    configured: true,
+    source: "dashboard",
+    bot_token_masked: maskBotToken(effectiveBotToken),
+    chat_id: effectiveChatId,
+    updated_at: encrypted.updated_at,
+  });
+});
+
+app.delete("/api/settings/telegram", (req, res) => {
+  if (!db.data.settings) {
+    return res.json({ configured: false, source: "none", disabled: true });
+  }
+
+  if (db.data.settings[TELEGRAM_KEY]) {
+    delete db.data.settings[TELEGRAM_KEY];
+  }
+  db.data.settings[DISABLED_KEY] = true;
+  db.write().then(() => {
+    res.json({ configured: false, source: "none", disabled: true });
+  });
+});
+
+app.post("/api/settings/telegram/test", async (req, res) => {
+  if (!settingsEncryptionKeyBuffer) {
+    return res.status(500).json({ error: "SETTINGS_ENCRYPTION_KEY is not configured" });
+  }
+
+  const isDisabled = db.data.settings && db.data.settings[DISABLED_KEY];
+  const legacyBotToken = process.env.TG_BOT_TOKEN || "";
+  const legacyChatId = process.env.TG_CHAT_ID || "";
+
+  const resolution = resolveTelegramConfig(
+    db.data.settings,
+    legacyBotToken,
+    legacyChatId,
+    isDisabled
+  );
+
+  if (!resolution) {
+    return res.status(400).json({ error: "Telegram is not configured" });
+  }
+
+  const botToken = resolution.source === "dashboard"
+    ? (() => {
+        const decrypted = getDecryptedTelegram(db.data.settings, settingsEncryptionKeyBuffer);
+        return decrypted ? decrypted.bot_token : null;
+      })()
+    : resolution.bot_token;
+
+  const chatId = resolution.source === "dashboard"
+    ? (() => {
+        const decrypted = getDecryptedTelegram(db.data.settings, settingsEncryptionKeyBuffer);
+        return decrypted ? decrypted.chat_id : null;
+      })()
+    : resolution.chat_id;
+
+  if (!botToken || !chatId) {
+    return res.status(400).json({ error: "Telegram is not fully configured" });
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10000);
+
+  try {
+    const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: "Smart Lock Telegram integration test successful.",
+      }),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeout);
+
+    const data = await response.json();
+
+    if (data.ok) {
+      return res.json({ ok: true });
+    }
+
+    return res.status(400).json({
+      ok: false,
+      error: "Telegram rejected the configured credentials or chat ID",
+    });
+  } catch (err) {
+    clearTimeout(timeout);
+    if (err.name === "AbortError") {
+      return res.status(400).json({
+        ok: false,
+        error: "Telegram test timed out",
+      });
+    }
+    return res.status(400).json({
+      ok: false,
+      error: "Telegram test failed: network error",
+    });
+  }
+});
+
 // Error handling: mounted last, after every route. Keeps the failure surface
 // uniform so a thrown handler cannot leak a stack trace to a client.
 app.use((err, _req, res, _next) => {
@@ -802,4 +1086,4 @@ export function closeTestRuntime() {
   if (typeof mqttClient.end === "function") mqttClient.end();
 }
 
-export { app };
+export { app, db };

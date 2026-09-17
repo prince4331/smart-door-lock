@@ -19,6 +19,8 @@ services:
         sync: false
       - key: CAM_UPLOAD_TOKEN
         sync: false
+      - key: SETTINGS_ENCRYPTION_KEY
+        sync: false
       - key: RATE_LIMIT_MAX
         value: 20
       - key: RATE_LIMIT_WINDOW_SECONDS

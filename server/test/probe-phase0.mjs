@@ -16,6 +16,7 @@ import path from "node:path";
 
 const DASH = crypto.randomBytes(32).toString("hex");
 const CAM = crypto.randomBytes(32).toString("hex");
+const ENC_KEY = crypto.randomBytes(32).toString("hex");
 
 // Per-run scratch directory: database, camera storage and any generated env
 // file all live here and are removed wholesale on exit.
@@ -72,6 +73,7 @@ const env = {
   CAM_UPLOAD_TOKEN: CAM,
   DB_PATH: PROBE_DB,
   CAM_STORAGE_DIR: PROBE_CAM,
+  SETTINGS_ENCRYPTION_KEY: ENC_KEY,
   // Nothing is listening on this loopback address, so the client cannot
   // connect to any broker — production infrastructure is never contacted.
   MQTT_BROKER: "mqtt://127.0.0.1:18830",
