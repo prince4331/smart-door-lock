@@ -27,8 +27,11 @@
 #define NVS_KEY_STA_SSID       "sta_ssid"
 #define NVS_KEY_STA_PASS       "sta_pass"
 #define NVS_KEY_SETUP_CODE     "setup_code"
+#define NVS_KEY_PRESENCE_SEC   "presence_sec"
 
-#define CMD_TIMESTAMP_WINDOW_SEC  300
+#define PRESENCE_DEFAULT_SEC   30
+#define PRESENCE_THRESHOLD_30  30
+#define PRESENCE_THRESHOLD_60  60
 
 extern char g_device_id[32];
 

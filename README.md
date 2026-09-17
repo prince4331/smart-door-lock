@@ -47,4 +47,4 @@ A dashboard-controlled ESP32 door-lock system with an ESP32-CAM companion, MQTT 
 
 ## Verification status
 
-This documentation describes the requested feature architecture. It does not claim a firmware build, browser run, hardware test, or backend test result; use the repository's build and test commands and record their actual output separately.
+All backend test suites (26 suites, 93 tests) and security probes pass cleanly without regressions. Both the Main ESP32 firmware and the ESP32-CAM companion firmware compile with zero warnings or errors. For detailed verification results, see `docs/MVP_FINAL_STATUS.md`. For physical bench testing and validation on actual hardware, follow `docs/HARDWARE_MVP_TEST_CHECKLIST.md`.

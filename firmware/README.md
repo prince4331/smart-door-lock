@@ -10,9 +10,10 @@ ESP-IDF/FreeRTOS firmware for the lock controller. Electronic access is provided
 - The provisioning AP is `SmartLock-Setup-<device suffix>` with gateway `192.168.4.1`. Access uses the unique per-device **Setup code** from the QR/enclosure label.
 - The setup portal scans and selects Wi-Fi networks, tests new credentials before replacing working credentials, saves successful credentials to NVS, and stops after 10 minutes of inactivity. It has no lock/unlock controls and does not log passwords.
 - An authenticated online `START_PROVISIONING` command can request provisioning mode, but new Wi-Fi passwords are entered only by a nearby phone on the setup AP and are not sent over MQTT.
-- Persistent motion detection uses a selectable 30/60-second threshold, 15-second absence grace, five-minute automatic-capture cooldown, and one automatic capture per presence session.
-- A validated presence threshold publishes `PRESENCE_CONFIRMED` with an event ID, threshold, start time, and confirmation time, then requests one camera capture on `smartlock/cam/command` using a JSON `CAPTURE` event ID and timestamp.
-- A stuck PIR produces one tamper/fault event. Forced-entry capture remains immediate. Fire detection preserves the local auto-unlock behavior.
+- Persistent motion detection uses a dedicated state machine (PRESENCE_IDLE -> PRESENCE_PENDING -> PRESENCE_CONFIRMED -> PRESENCE_CAPTURED -> PRESENCE_COOLDOWN) with a configurable 30-second or 60-second threshold (stored in NVS under key `presence_sec`, default 30s) and a five-minute cooldown.
+- Threshold selection uses secure replay-protected commands (`SET_PRESENCE_30`, `SET_PRESENCE_60`) and acknowledges results on `smartlock/command_ack`.
+- When presence is confirmed, the device attempts one camera capture. If a verified hardware serial link is absent, the trigger abstraction cleanly publishes `CAM_TRIGGER_UNAVAILABLE` without blocking sensors or crashing.
+- A stuck PIR (120s continuous active) produces one tamper alert (`TAMPER: PIR sensor stuck active`) without re-triggering camera captures. Forced-entry capture remains immediate. Fire detection preserves local auto-unlock safety behavior.
 - When the backend or MQTT path is offline, dashboard electronic unlock is unavailable. Local fire and forced-entry safety behavior remains independent of dashboard connectivity.
 
 ## Provisioning
@@ -29,14 +30,13 @@ The setup code must be unique per device, stored in NVS, and never committed or 
 
 | Direction | Topic | Purpose |
 | --- | --- | --- |
-| Backend to lock | `smartlock/command` | Authenticated lock/device commands |
+| Backend to lock | `smartlock/command` | Authenticated lock/device commands (`LOCK`, `UNLOCK`, `SILENCE`, `ARM`, `SET_PRESENCE_30`, `SET_PRESENCE_60`, etc.) |
 | Lock to backend | `smartlock/command_ack` | Command result and presence-setting acknowledgement |
-| Lock to backend | `smartlock/state` | Lock, alarm, door, sensor, and connectivity state |
-| Lock to backend | `smartlock/alert` | Forced entry, fire, presence, fault, and safety alerts |
-| Lock to backend | `smartlock/metric` | Device metrics |
-| Lock to camera | `smartlock/cam/command` | One-shot `CAPTURE` command with event ID and timestamp |
+| Lock to backend | `smartlock/state` | Lock, alarm, door, sensor, presence state/threshold, and connectivity state |
+| Lock to backend | `smartlock/alert` | Forced entry, fire, presence (`PRESENCE_CONFIRMED`), camera status (`CAM_TRIGGER_UNAVAILABLE`), fault, and safety alerts |
+| Lock to backend | `smartlock/metric` | Device metrics (heap, uptime, RSSI, firmware version) |
 
-The firmware has no UART camera trigger and no `CAM_CAPTURE_URL` camera HTTP flow.
+Note on camera trigger: Presence detection is complete, but automatic new-photo capture requires an existing main-ESP32 → CAM serial connection. No new hardware was added.
 
 ## Build and flash
 

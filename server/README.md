@@ -41,6 +41,8 @@ The backend validates required secrets before starting its listener and external
 | `PUT /api/settings/telegram` | `DASH_TOKEN` | Validate, encrypt, and save Telegram settings |
 | `DELETE /api/settings/telegram` | `DASH_TOKEN` | Remove stored Telegram settings |
 | `POST /api/settings/telegram/test` | `DASH_TOKEN` | Send a harmless test message |
+| `GET /api/settings/presence` | `DASH_TOKEN` | Current presence detection threshold (30s/60s) and cooldown (300s) |
+| `PUT /api/settings/presence` | `DASH_TOKEN` | Update presence threshold; dispatches replay-protected command to device |
 
 ## Camera flow
 

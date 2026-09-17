@@ -70,8 +70,19 @@ static bool alarm_silenced = false;
 static int64_t unlock_start_ms = 0;
 static int64_t door_open_start_ms = 0;
 static bool door_held_alerted = false;
+typedef enum {
+    PRESENCE_IDLE = 0,
+    PRESENCE_PENDING,
+    PRESENCE_CONFIRMED,
+    PRESENCE_CAPTURED,
+    PRESENCE_COOLDOWN
+} presence_state_t;
+
+static presence_state_t presence_state = PRESENCE_IDLE;
+static uint32_t presence_threshold_sec = PRESENCE_DEFAULT_SEC;
+static int64_t presence_start_ms = 0;
+static int64_t last_capture_ms = 0;
 static int64_t pir_active_start_ms = 0;
-static bool pir_dwell_triggered = false;
 static bool pir_tamper_alerted = false;
 static bool reed_tamper_alerted = false;
 
@@ -128,7 +139,9 @@ static void publish_metric(void);
 static void handle_command(const char *cmd);
 static void update_schedule_mode(void);
 static void perform_ota_update(void);
+static bool camera_trigger_available(void);
 static void trigger_cam_capture(void);
+static bool save_presence_threshold(uint32_t sec);
 static void apply_lock_state(lock_state_t new_state, const char *reason, bool notify);
 static void sensor_task(void *pvParameters);
 static void control_task(void *pvParameters);
@@ -391,6 +404,17 @@ static void load_nvs_state(void)
         lock_state = (lock_state_t)saved_state;
     }
 
+    uint32_t saved_pres = PRESENCE_DEFAULT_SEC;
+    if (nvs_get_u32(nvs_storage_handle, NVS_KEY_PRESENCE_SEC, &saved_pres) == ESP_OK) {
+        if (saved_pres == 30 || saved_pres == 60) {
+            presence_threshold_sec = saved_pres;
+        } else {
+            presence_threshold_sec = PRESENCE_DEFAULT_SEC;
+        }
+    } else {
+        presence_threshold_sec = PRESENCE_DEFAULT_SEC;
+    }
+
     nvs_commit(nvs_storage_handle);
 }
 
@@ -398,6 +422,15 @@ static void save_nvs_state(void)
 {
     nvs_set_u8(nvs_storage_handle, NVS_KEY_LOCK_STATE, (uint8_t)lock_state);
     nvs_commit(nvs_storage_handle);
+}
+
+static bool save_presence_threshold(uint32_t sec)
+{
+    if (!nvs_storage_handle) return false;
+    if (sec != 30 && sec != 60) return false;
+    esp_err_t err = nvs_set_u32(nvs_storage_handle, NVS_KEY_PRESENCE_SEC, sec);
+    if (err != ESP_OK) return false;
+    return nvs_commit(nvs_storage_handle) == ESP_OK;
 }
 
 static bool load_wifi_credentials(char *ssid, size_t ssid_len, char *pass, size_t pass_len)
@@ -920,15 +953,19 @@ static void publish_state(void)
 
     const char *lock_str[] = {"LOCKED", "UNLOCKED"};
     const char *mode_str[] = {"HOME", "AWAY", "NIGHT"};
+    const char *pres_str[] = {"IDLE", "PENDING", "CONFIRMED", "CAPTURED", "COOLDOWN"};
 
     snprintf(payload, sizeof(payload),
              "{\"device_id\":\"%s\",\"lock_state\":\"%s\",\"security_mode\":\"%s\","
              "\"sensors\":{\"pir\":%s,\"reed\":%s,\"fire\":%s},"
+             "\"presence\":{\"state\":\"%s\",\"threshold\":%lu},"
              "\"alarm\":%s,\"alarm_silenced\":%s,\"boot_count\":%lu,\"timestamp\":%lld}",
              g_device_id, lock_str[lock_state], mode_str[current_mode],
              pir_active ? "true" : "false",
              reed_active ? "true" : "false",
              fire_active ? "true" : "false",
+             pres_str[presence_state],
+             (unsigned long)presence_threshold_sec,
              alarm_active ? "true" : "false",
              alarm_silenced ? "true" : "false",
              boot_count, (long long)now);
@@ -1045,7 +1082,9 @@ static bool validate_command(const char *cmd)
         strcmp(command, "MODE_HOME") != 0 &&
         strcmp(command, "MODE_AWAY") != 0 &&
         strcmp(command, "MODE_NIGHT") != 0 &&
-        strcmp(command, "START_PROVISIONING") != 0) {
+        strcmp(command, "START_PROVISIONING") != 0 &&
+        strcmp(command, "SET_PRESENCE_30") != 0 &&
+        strcmp(command, "SET_PRESENCE_60") != 0) {
         return false;
     }
 
@@ -1113,6 +1152,16 @@ static void handle_command(const char *cmd)
         current_mode = MODE_NIGHT;
         publish_state();
         publish_command_ack(command, "ok", "mode_night");
+    } else if (strcmp(command, "SET_PRESENCE_30") == 0) {
+        presence_threshold_sec = 30;
+        save_presence_threshold(30);
+        publish_command_ack(command, "ok", "presence_30");
+        publish_state();
+    } else if (strcmp(command, "SET_PRESENCE_60") == 0) {
+        presence_threshold_sec = 60;
+        save_presence_threshold(60);
+        publish_command_ack(command, "ok", "presence_60");
+        publish_state();
     }
 }
 
@@ -1129,7 +1178,6 @@ static void sensor_task(void *pvParameters)
             if (pir_stable >= PIR_DEBOUNCE_THRESHOLD && !pir_active) {
                 pir_active = true;
                 pir_active_start_ms = now;
-                pir_dwell_triggered = false;
                 pir_tamper_alerted = false;
                 publish_alert("PIR", "Motion detected");
                 if (!alarm_silenced && lock_state == LOCK_STATE_LOCKED &&
@@ -1145,7 +1193,6 @@ static void sensor_task(void *pvParameters)
             if (pir_active) {
                 pir_active = false;
                 pir_active_start_ms = 0;
-                pir_dwell_triggered = false;
                 pir_tamper_alerted = false;
                 publish_state();
             }
@@ -1215,12 +1262,45 @@ static void sensor_task(void *pvParameters)
             }
         }
 
-        if (pir_active && !pir_dwell_triggered && pir_active_start_ms > 0) {
-            if (now - pir_active_start_ms >= PIR_DWELL_MS) {
-                pir_dwell_triggered = true;
-                publish_alert("CAM_CAPTURE", "PIR dwell exceeded");
-                trigger_cam_capture();
-                publish_state();
+        // Presence state machine (IDLE -> PENDING -> CONFIRMED -> CAPTURED -> COOLDOWN)
+        if (pir_active) {
+            if (presence_state == PRESENCE_IDLE) {
+                if (last_capture_ms > 0 && (now - last_capture_ms) < CAPTURE_COOLDOWN_MS) {
+                    presence_state = PRESENCE_COOLDOWN;
+                } else {
+                    presence_state = PRESENCE_PENDING;
+                    presence_start_ms = now;
+                }
+            } else if (presence_state == PRESENCE_PENDING) {
+                int64_t elapsed_ms = now - presence_start_ms;
+                if (elapsed_ms >= (int64_t)(presence_threshold_sec * 1000)) {
+                    presence_state = PRESENCE_CONFIRMED;
+                    publish_alert("PRESENCE", "PRESENCE_CONFIRMED");
+
+                    // Attempt ONE camera capture
+                    trigger_cam_capture();
+                    last_capture_ms = now;
+
+                    presence_state = PRESENCE_CAPTURED;
+                    publish_state();
+                }
+            } else if (presence_state == PRESENCE_CAPTURED) {
+                // Same continuous presence session: only ONE capture attempt
+            } else if (presence_state == PRESENCE_COOLDOWN) {
+                // Cooldown active, wait until PIR clears
+            }
+        } else {
+            // PIR inactive: reset presence session
+            if (presence_state == PRESENCE_PENDING) {
+                presence_state = PRESENCE_IDLE;
+                presence_start_ms = 0;
+            } else if (presence_state == PRESENCE_CAPTURED || presence_state == PRESENCE_COOLDOWN) {
+                presence_start_ms = 0;
+                if (last_capture_ms > 0 && (now - last_capture_ms) < CAPTURE_COOLDOWN_MS) {
+                    presence_state = PRESENCE_COOLDOWN;
+                } else {
+                    presence_state = PRESENCE_IDLE;
+                }
             }
         }
 
@@ -1354,29 +1434,19 @@ static void perform_ota_update(void)
     }
 }
 
+static bool camera_trigger_available(void)
+{
+    // No verified hardware serial connection exists between main ESP32 and ESP32-CAM.
+    return false;
+}
+
 static void trigger_cam_capture(void)
 {
-    if (strlen(CAM_CAPTURE_URL) == 0) {
+    if (!camera_trigger_available()) {
+        ESP_LOGW(TAG, "Camera trigger unavailable (no verified hardware serial link)");
+        publish_alert("CAMERA", "CAM_TRIGGER_UNAVAILABLE");
         return;
     }
-
-    esp_http_client_config_t config = {
-        .url = CAM_CAPTURE_URL,
-        .method = HTTP_METHOD_GET,
-        .timeout_ms = CAM_CAPTURE_TIMEOUT_MS,
-    };
-
-    esp_http_client_handle_t client = esp_http_client_init(&config);
-    if (client == NULL) {
-        ESP_LOGW(TAG, "CAM capture init failed");
-        return;
-    }
-
-    esp_err_t err = esp_http_client_perform(client);
-    if (err != ESP_OK) {
-        ESP_LOGW(TAG, "CAM capture failed: %s", esp_err_to_name(err));
-    }
-    esp_http_client_cleanup(client);
 }
 
 static void apply_lock_state(lock_state_t new_state, const char *reason, bool notify)

@@ -797,8 +797,8 @@ app.post("/api/command", (req, res) => {
   if (command.length > 64) {
     return res.status(400).json({ error: "command too long" });
   }
-  if (!["LOCK", "UNLOCK", "SILENCE", "ARM", "OTA", "MODE_HOME", "MODE_AWAY", "MODE_NIGHT", "START_PROVISIONING"].includes(command)) {
-    return res.status(400).json({ error: "invalid command. Allowed: LOCK, UNLOCK, SILENCE, ARM, OTA, MODE_HOME, MODE_AWAY, MODE_NIGHT, START_PROVISIONING" });
+  if (!["LOCK", "UNLOCK", "SILENCE", "ARM", "OTA", "MODE_HOME", "MODE_AWAY", "MODE_NIGHT", "START_PROVISIONING", "SET_PRESENCE_30", "SET_PRESENCE_60"].includes(command)) {
+    return res.status(400).json({ error: "invalid command. Allowed: LOCK, UNLOCK, SILENCE, ARM, OTA, MODE_HOME, MODE_AWAY, MODE_NIGHT, START_PROVISIONING, SET_PRESENCE_30, SET_PRESENCE_60" });
   }
 
   // Add nonce and timestamp for replay protection
@@ -884,8 +884,9 @@ app.put("/api/settings/telegram", async (req, res) => {
             error: "Stored Telegram settings are unreadable; provide a new bot token to replace them",
           });
         }
+      } else {
+        throw err;
       }
-      throw err;
     }
   }
 
@@ -1036,6 +1037,69 @@ app.post("/api/settings/telegram/test", async (req, res) => {
     console.warn("[TG] test endpoint failed:", err.message);
     res.status(500).json({ error: "Unable to resolve Telegram configuration" });
   }
+});
+
+app.get("/api/settings/presence", (req, res) => {
+  const presence = (db.data.settings && db.data.settings.presence) || {
+    threshold_seconds: 30,
+    cooldown_seconds: 300,
+  };
+  res.json({
+    threshold_seconds: presence.threshold_seconds || 30,
+    cooldown_seconds: 300,
+    ...(presence.updated_at ? { updated_at: presence.updated_at } : {}),
+  });
+});
+
+app.put("/api/settings/presence", (req, res) => {
+  const { threshold_seconds } = req.body || {};
+  if (threshold_seconds !== 30 && threshold_seconds !== 60) {
+    return res.status(400).json({ error: "threshold_seconds must be 30 or 60" });
+  }
+
+  const command = threshold_seconds === 60 ? "SET_PRESENCE_60" : "SET_PRESENCE_30";
+  const nonce = generateNonce();
+  const timestamp = Math.floor(Date.now() / 1000);
+
+  pruneOldNonces();
+  if (usedNonces.has(nonce)) {
+    return res.status(409).json({ error: "duplicate command (replay detected)" });
+  }
+  usedNonces.add(nonce);
+
+  const signedCmd = `${command}|${nonce}|${timestamp}`;
+
+  mqttClient.publish(MQTT_TOPIC_CMD, signedCmd, { qos: 1 }, async (err) => {
+    if (err) {
+      console.error("[API] MQTT publish failed:", err);
+      return res.status(500).json({ error: "mqtt publish failed" });
+    }
+
+    db.data.settings = db.data.settings || {};
+    db.data.settings.presence = {
+      threshold_seconds,
+      cooldown_seconds: 300,
+      updated_at: new Date().toISOString(),
+    };
+
+    try {
+      await db.write();
+    } catch (writeErr) {
+      console.error("[API] DB write failed for presence settings:", writeErr);
+    }
+
+    broadcast({ type: "presence_settings", payload: db.data.settings.presence });
+
+    res.json({
+      ok: true,
+      threshold_seconds,
+      cooldown_seconds: 300,
+      command,
+      nonce,
+      timestamp,
+      updated_at: db.data.settings.presence.updated_at,
+    });
+  });
 });
 
 // Error handling: mounted last, after every route. Keeps the failure surface

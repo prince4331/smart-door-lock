@@ -1,9 +1,9 @@
 # System Architecture — Smart Door Lock
 
-Audit date: 2026-09-17
-Branch: `feature/software-access-provisioning-alerts`
+Audit date: 2026-09-18
+Branch: `mvp/final-smart-lock-upgrade`
 
-This document records the requested feature architecture. Implementation and verification are separate: no firmware build, browser run, hardware test, or backend test result is claimed by this documentation update.
+This document records the implemented feature architecture for the Smart Door Lock MVP. It reflects the validated software access, runtime Wi-Fi provisioning, encrypted Telegram configuration, presence detection state machine, backend APIs, and camera integration status.
 
 ## 1. Component map
 

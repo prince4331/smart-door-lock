@@ -408,6 +408,48 @@
           <div id="telegramMessage" style="margin-top: 8px; font-size: 12px; display: none;"></div>
         </div>
 
+        <div class="card" id="presenceCard">
+          <h2>Presence Detection</h2>
+          <div id="presenceStatus" style="margin-bottom: 10px; font-size: 12px; color: var(--muted);">Loading...</div>
+          <div style="margin-bottom: 10px;">
+            <label style="display: block; font-size: 11px; color: var(--muted); margin-bottom: 6px;">Confirmation Threshold</label>
+            <div style="display: flex; gap: 16px; align-items: center;">
+              <label style="display: flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer;">
+                <input type="radio" name="presenceThreshold" value="30" id="presence30" checked />
+                30 seconds
+              </label>
+              <label style="display: flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer;">
+                <input type="radio" name="presenceThreshold" value="60" id="presence60" />
+                60 seconds
+              </label>
+            </div>
+          </div>
+          <div style="margin-bottom: 12px; font-size: 12px; color: var(--muted);">
+            Cooldown: <strong>5 minutes</strong>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <button onclick="savePresenceSettings()" class="btn-secondary" style="flex: 1;">Save</button>
+          </div>
+          <div id="presenceMessage" style="margin-top: 8px; font-size: 12px; display: none;"></div>
+        </div>
+
+        <div class="card">
+          <h2>Wi-Fi Provisioning</h2>
+          <p style="font-size: 12px; color: var(--muted); margin-bottom: 12px;">
+            To reconfigure device Wi-Fi, start the local setup access point.
+          </p>
+          <button onclick="startWifiProvisioning()" class="btn-warn" style="width: 100%;">Start Wi-Fi Setup</button>
+          <div id="provNotice" style="margin-top: 10px; padding: 10px; background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; font-size: 11px; color: var(--muted); display: none;">
+            <strong style="color: var(--accent-2);">Next Steps:</strong>
+            <ol style="margin-left: 16px; margin-top: 4px; line-height: 1.6;">
+              <li>Device setup AP will start (<code>SmartLock-Setup-XXXX</code>)</li>
+              <li>Connect your phone/laptop to that Wi-Fi</li>
+              <li>Open <code>http://192.168.4.1</code> in your browser</li>
+              <li>Enter device Setup Code and new Wi-Fi credentials</li>
+            </ol>
+          </div>
+        </div>
+
         <div class="card">
           <h2>Security Mode</h2>
           <div style="margin-bottom: 10px;">
@@ -462,6 +504,9 @@
           </div>
           <div style="margin-top: 8px;">
             <button class="btn-secondary" onclick="refreshCamera()">Refresh</button>
+          </div>
+          <div style="margin-top: 10px; font-size: 11px; color: var(--muted); border-top: 1px solid rgba(255,255,255,0.06); padding-top: 8px;">
+            Automatic camera trigger requires existing serial connection.
           </div>
           <div id="camError" class="cam-error"></div>
         </div>
@@ -540,6 +585,7 @@
     let commandTimer = null;
     let eventHistory = [];
     let suppressUiUpdates = false;
+    let lastDeviceSeenMs = 0;
     
     const elements = {
       loginOverlay: document.getElementById('loginOverlay'),
@@ -683,7 +729,9 @@
           loadInitial();
           loadCameraStatus();
           loadTelegramSettings();
+          loadPresenceSettings();
           setInterval(loadCameraStatus, 2000);
+          setInterval(checkDeviceLiveness, 3000);
           connectSSE();
         }
       }).catch(() => {
@@ -821,6 +869,91 @@
       msgEl.style.display = 'block';
       msgEl.style.color = type === 'error' ? 'var(--danger)' : 'var(--success)';
       msgEl.textContent = msg;
+    }
+
+    async function loadPresenceSettings() {
+      const statusEl = document.getElementById('presenceStatus');
+      const radio30 = document.getElementById('presence30');
+      const radio60 = document.getElementById('presence60');
+      const msgEl = document.getElementById('presenceMessage');
+
+      try {
+        const res = await fetch('/api/settings/presence', { headers: authHeaders() });
+        if (res.status === 401) { handleUnauthorized(); return; }
+        if (!res.ok) {
+          if (statusEl) statusEl.textContent = 'Unable to load presence settings';
+          return;
+        }
+        const data = await res.json();
+        const threshold = data.threshold_seconds || 30;
+        if (threshold === 60) {
+          if (radio60) radio60.checked = true;
+        } else {
+          if (radio30) radio30.checked = true;
+        }
+        if (statusEl) {
+          statusEl.textContent = `Current threshold: ${threshold}s · Cooldown: 5 min${data.updated_at ? ' · Updated: ' + new Date(data.updated_at).toLocaleTimeString() : ''}`;
+          statusEl.style.color = 'var(--text)';
+        }
+        if (msgEl) msgEl.style.display = 'none';
+      } catch (e) {
+        if (statusEl) statusEl.textContent = 'Status: Load error';
+        console.warn('Presence settings load failed', e);
+      }
+    }
+
+    async function savePresenceSettings() {
+      const radio60 = document.getElementById('presence60');
+      const msgEl = document.getElementById('presenceMessage');
+      const statusEl = document.getElementById('presenceStatus');
+      const threshold = (radio60 && radio60.checked) ? 60 : 30;
+
+      showPresenceMessage('Sending command SET_PRESENCE_' + threshold + '...', 'info');
+
+      try {
+        const res = await fetch('/api/settings/presence', {
+          method: 'PUT',
+          headers: Object.assign({}, authHeaders({ 'Content-Type': 'application/json' })),
+          body: JSON.stringify({ threshold_seconds: threshold }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          showPresenceMessage(data.error || 'Failed to save presence settings', 'error');
+          return;
+        }
+        showPresenceMessage('Saved · Command sent: ' + data.command, 'success');
+        if (statusEl) {
+          statusEl.textContent = `Current threshold: ${threshold}s · Cooldown: 5 min · Command sent`;
+        }
+        loadPresenceSettings();
+      } catch (e) {
+        showPresenceMessage('Failed: network error', 'error');
+      }
+    }
+
+    function showPresenceMessage(msg, type) {
+      const msgEl = document.getElementById('presenceMessage');
+      if (!msgEl) return;
+      msgEl.style.display = 'block';
+      msgEl.style.color = type === 'error' ? 'var(--danger)' : (type === 'info' ? 'var(--info)' : 'var(--success)');
+      msgEl.textContent = msg;
+    }
+
+    async function startWifiProvisioning() {
+      if (!confirm('Start device Wi-Fi setup mode?\n\nThe lock will temporarily disconnect from your router and broadcast a setup network.')) {
+        return;
+      }
+      const noticeEl = document.getElementById('provNotice');
+      if (noticeEl) noticeEl.style.display = 'block';
+      sendCommand('START_PROVISIONING');
+    }
+
+    function checkDeviceLiveness() {
+      if (!lastDeviceSeenMs) return;
+      const ageMs = Date.now() - lastDeviceSeenMs;
+      const isOnline = ageMs < 15000;
+      elements.deviceDot.className = `status-dot ${isOnline ? 'online' : 'offline'}`;
+      elements.deviceStatus.textContent = isOnline ? 'Online' : 'Offline';
     }
 
     // Initialize
@@ -984,8 +1117,9 @@
       if (lastSeenTs) {
         const date = new Date(lastSeenTs);
         elements.lastSeen.textContent = date.toLocaleTimeString();
-        const ageMs = Date.now() - date.getTime();
-        const isOnline = ageMs < 30000; // 30s threshold
+        lastDeviceSeenMs = date.getTime();
+        const ageMs = Date.now() - lastDeviceSeenMs;
+        const isOnline = ageMs < 15000; // 15s threshold per Step 15
         elements.deviceDot.className = `status-dot ${isOnline ? 'online' : 'offline'}`;
         elements.deviceStatus.textContent = isOnline ? 'Online' : 'Offline';
       }
